@@ -3,7 +3,7 @@
   "name": "Kejmil OLED",
   "version": "1.0.1",
   "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.1.bin",
-  "changelog": "",
+  "changelog": "Faster BLE OTA, simplified OLED header, and KESP32 update flow",
   "sizeBytes": 1177648,
   "sha256": "9f4f5fd9f35b1ec1c1a1af381f44454805138868b5bb6263d17521921c3116d7",
   "required": false,

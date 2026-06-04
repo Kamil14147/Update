@@ -93,6 +93,7 @@ jobs:
         run: |
           VERSION_NAME="${{ steps.version.outputs.name }}"
           VERSION_CODE="${{ steps.version.outputs.code }}"
+          CHANGELOG="${{ github.event.inputs.changelog || 'KESP32 app build from GitHub Actions' }}"
           APK_NAME="KESP32-${VERSION_NAME}.apk"
           REQUIRED_FLAG=""
           if [ "${{ inputs.required }}" = "true" ]; then
@@ -105,7 +106,7 @@ jobs:
             --version-name "$VERSION_NAME" \
             --version-code "$VERSION_CODE" \
             --output android-app/latest.json \
-            --changelog "${{ inputs.changelog }}" \
+            --changelog "$CHANGELOG" \
             $REQUIRED_FLAG
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
