@@ -1,0 +1,10 @@
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+android-app/app/build/
+android-app/build/
+firmware/build/
+*.tmp
+

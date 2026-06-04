@@ -1,0 +1,52 @@
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+}
+
+def releaseStoreFile = System.getenv("KEPS32V1_KEYSTORE_FILE")
+def releaseStorePassword = System.getenv("KEPS32V1_KEYSTORE_PASSWORD")
+def releaseKeyAlias = System.getenv("KEPS32V1_KEY_ALIAS")
+def releaseKeyPassword = System.getenv("KEPS32V1_KEY_PASSWORD")
+def hasReleaseSigning = releaseStoreFile && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
+android {
+    namespace "pl.kejmil.oledsender"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "pl.kejmil.oledsender"
+        minSdk 23
+        targetSdk 36
+        versionCode 1
+        versionName "1.0"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    if (hasReleaseSigning) {
+        signingConfigs {
+            release {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+}

@@ -1,0 +1,12 @@
+{
+  "packageName": "pl.kejmil.oledsender",
+  "name": "KEPS32v1",
+  "versionName": "1.0",
+  "versionCode": 1,
+  "apkUrl": "https://raw.githubusercontent.com/krawc/kejmil-oled/main/android-app/releases/KEPS32v1-1.0.apk",
+  "changelog": "Initial KEPS32v1 app release.",
+  "sizeBytes": 0,
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "required": false,
+  "protocol": "android-apk-v1"
+}

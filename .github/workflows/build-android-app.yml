@@ -1,0 +1,102 @@
+name: Build Android app
+
+on:
+  workflow_dispatch:
+    inputs:
+      changelog:
+        description: "Changelog shown in the Android app"
+        required: false
+        default: "Android app build from GitHub Actions"
+      required:
+        description: "Mark update as required"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Decode release keystore
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEPS32V1_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEPS32V1_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEPS32V1_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEPS32V1_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "Missing KEPS32V1_KEYSTORE_BASE64 secret"
+            exit 1
+          fi
+          if [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "Missing one of KEPS32V1_KEYSTORE_PASSWORD, KEPS32V1_KEY_ALIAS, KEPS32V1_KEY_PASSWORD"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keps32v1-release.jks"
+
+      - name: Read app version
+        id: version
+        shell: bash
+        run: |
+          VERSION_NAME="$(grep -E 'versionName "' android-app/app/build.gradle | sed -E 's/.*versionName "([^"]+)".*/\1/')"
+          VERSION_CODE="$(grep -E 'versionCode [0-9]+' android-app/app/build.gradle | sed -E 's/.*versionCode ([0-9]+).*/\1/')"
+          echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Build signed release APK
+        working-directory: android-app
+        env:
+          KEPS32V1_KEYSTORE_FILE: ${{ runner.temp }}/keps32v1-release.jks
+          KEPS32V1_KEYSTORE_PASSWORD: ${{ secrets.KEPS32V1_KEYSTORE_PASSWORD }}
+          KEPS32V1_KEY_ALIAS: ${{ secrets.KEPS32V1_KEY_ALIAS }}
+          KEPS32V1_KEY_PASSWORD: ${{ secrets.KEPS32V1_KEY_PASSWORD }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease
+
+      - name: Publish app files in repo
+        shell: bash
+        run: |
+          VERSION_NAME="${{ steps.version.outputs.name }}"
+          VERSION_CODE="${{ steps.version.outputs.code }}"
+          APK_NAME="KEPS32v1-${VERSION_NAME}.apk"
+          REQUIRED_FLAG=""
+          if [ "${{ inputs.required }}" = "true" ]; then
+            REQUIRED_FLAG="--required"
+          fi
+          mkdir -p android-app/releases
+          cp android-app/app/build/outputs/apk/release/app-release.apk "android-app/releases/${APK_NAME}"
+          python tools/write_android_app_manifest.py \
+            --apk "android-app/releases/${APK_NAME}" \
+            --version-name "$VERSION_NAME" \
+            --version-code "$VERSION_CODE" \
+            --output android-app/latest.json \
+            --changelog "${{ inputs.changelog }}" \
+            $REQUIRED_FLAG
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android-app/latest.json "android-app/releases/${APK_NAME}"
+          git diff --cached --quiet || git commit -m "Publish Android app ${VERSION_NAME}"
+          git push
+
+      - name: Upload app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KEPS32v1-${{ steps.version.outputs.name }}
+          path: |
+            android-app/latest.json
+            android-app/releases/KEPS32v1-${{ steps.version.outputs.name }}.apk
