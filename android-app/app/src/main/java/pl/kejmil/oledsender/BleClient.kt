@@ -104,6 +104,15 @@ class BleClient(
         sendOtaControl(JSONObject().put("cmd", "version"))
     }
 
+    fun abortFirmwareUpdate() {
+        if (otaTransfer == null) {
+            publishOtaStatus("Brak aktywnej aktualizacji OTA", progress = 0)
+            return
+        }
+        sendOtaControl(JSONObject().put("cmd", "abort"))
+        cancelOta("Aktualizacja OTA anulowana")
+    }
+
     fun startFirmwareUpdate(manifest: FirmwareManifest, firmware: ByteArray) {
         val control = otaControl
         val data = otaData
@@ -192,7 +201,7 @@ class BleClient(
             BleOperation.CharacteristicWrite(
                 characteristic = data,
                 payload = chunk,
-                writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
+                writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE,
                 description = "ota data",
                 afterWrite = { sendNextOtaChunk() }
             )
@@ -323,6 +332,9 @@ class BleClient(
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 reconnectDelayMs = 5000L
                 setStatus("BLE polaczone")
+                if (hasBlePermissions()) {
+                    gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)
+                }
                 requestMtu(gatt)
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 cancelOta("BLE rozlaczone w trakcie aktualizacji")
@@ -430,7 +442,7 @@ class BleClient(
             scheduleReconnect()
             return
         }
-        if (!currentGatt.requestMtu(185)) {
+        if (!currentGatt.requestMtu(517)) {
             discoverServices(currentGatt)
         }
     }
@@ -661,7 +673,7 @@ class BleClient(
         private const val SCAN_TIMEOUT_MS = 8000L
         private const val MAX_RECONNECT_DELAY_MS = 60000L
         private const val MAX_JSON_BYTES = 768
-        private const val OTA_CHUNK_LIMIT = 180
+        private const val OTA_CHUNK_LIMIT = 512
         private val UART_SERVICE_UUID: UUID = UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e")
         private val UART_RX_UUID: UUID = UUID.fromString("6e400002-b5a3-f393-e0a9-e50e24dcca9e")
         private val UART_TX_UUID: UUID = UUID.fromString("6e400003-b5a3-f393-e0a9-e50e24dcca9e")

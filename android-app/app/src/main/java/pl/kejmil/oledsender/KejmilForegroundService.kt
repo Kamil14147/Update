@@ -62,6 +62,10 @@ class KejmilForegroundService : Service() {
             is AppBus.Message.RequestFirmwareVersion -> bleClient.requestFirmwareVersion()
             is AppBus.Message.CheckFirmwareUpdates -> firmwareUpdater.checkForUpdates(automatic = false)
             is AppBus.Message.InstallFirmwareUpdate -> firmwareUpdater.installLatest()
+            is AppBus.Message.CancelFirmwareUpdate -> {
+                firmwareUpdater.cancelInstall()
+                bleClient.abortFirmwareUpdate()
+            }
             is AppBus.Message.DebugJson -> {
                 if (settings.debugModeEnabled) {
                     bleClient.send(message.json)
@@ -75,6 +79,7 @@ class KejmilForegroundService : Service() {
             is AppBus.Message.AppUpdateStatus,
             is AppBus.Message.CheckAppUpdates,
             is AppBus.Message.InstallAppUpdate,
+            is AppBus.Message.CancelAppUpdate,
             is AppBus.Message.Log -> Unit
         }
     }
@@ -277,7 +282,7 @@ class KejmilForegroundService : Service() {
 
         return builder
             .setSmallIcon(R.drawable.ic_stat_oled)
-            .setContentTitle("KEPS32v1")
+            .setContentTitle("KESP32")
             .setContentText(status)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -294,7 +299,7 @@ class KejmilForegroundService : Service() {
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Usluga KEPS32v1",
+            "Usluga KESP32",
             NotificationManager.IMPORTANCE_LOW
         )
         channel.description = "Utrzymuje polaczenie BLE z ESP32 OLED"
@@ -579,6 +584,10 @@ class KejmilForegroundService : Service() {
             } else {
                 context.startService(intent)
             }
+        }
+
+        fun stop(context: Context) {
+            context.startService(Intent(context, KejmilForegroundService::class.java).setAction(ACTION_STOP))
         }
     }
 }

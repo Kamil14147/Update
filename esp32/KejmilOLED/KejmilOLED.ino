@@ -26,7 +26,7 @@ static const bool BUTTON_ENABLED = true;
 
 static const char *DEVICE_ID = "kejmil-oled-esp32";
 static const char *BLE_DEVICE_NAME = "Kejmil OLED";
-static const char *FW_VERSION = "1.0.0";
+static const char *FW_VERSION = "1.0.1";
 static const char *UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 static const char *UART_RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 static const char *UART_TX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
@@ -39,7 +39,7 @@ static const uint16_t MAX_OTA_CONTROL_LENGTH = 384;
 static const uint16_t JSON_DOC_SIZE = 1536;
 static const uint16_t DISPLAY_REFRESH_MS = 160;
 static const uint16_t SCROLL_STEP_MS = 250;
-static const uint16_t OTA_NOTIFY_INTERVAL_MS = 500;
+static const uint16_t OTA_NOTIFY_INTERVAL_MS = 1000;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
@@ -243,7 +243,7 @@ void setup() {
   }
 
   BLEDevice::init(BLE_DEVICE_NAME);
-  BLEDevice::setMTU(185);
+  BLEDevice::setMTU(517);
 
   bleServer = BLEDevice::createServer();
   bleServer->setCallbacks(new ServerCallbacks());
@@ -881,7 +881,6 @@ void draw() {
     }
   }
 
-  drawStatusBar();
   display.display();
 }
 
@@ -927,7 +926,12 @@ void drawHeader(const String &title) {
   display.setCursor(3, 2);
   printFit(title, 15);
   display.setCursor(101, 2);
-  display.print(bleConnected ? "BLE" : "---");
+  if (phoneBattery >= 0) {
+    display.print(phoneBattery);
+    display.print("%");
+  } else {
+    display.print("--%");
+  }
 }
 
 void drawStatusBar() {

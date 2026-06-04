@@ -24,6 +24,7 @@ class FirmwareUpdater(
     private var currentEsp32Version: String? = null
     private var checkInProgress = false
     private var installInProgress = false
+    @Volatile private var cancelRequested = false
 
     fun setCurrentEsp32Version(version: String) {
         currentEsp32Version = version
@@ -102,10 +103,14 @@ class FirmwareUpdater(
         }
 
         installInProgress = true
+        cancelRequested = false
         publish(AppBus.Message.FirmwareStatus(status = "Pobieram firmware z GitHuba", progress = 0))
         executor.execute {
             try {
                 val bytes = fetchBytes(manifest.firmwareUrl, manifest.sizeBytes)
+                if (cancelRequested) {
+                    throw InterruptedException("anulowano")
+                }
                 if (bytes.size.toLong() != manifest.sizeBytes) {
                     throw IllegalStateException("Rozmiar pliku: ${bytes.size}, oczekiwano ${manifest.sizeBytes}")
                 }
@@ -126,12 +131,24 @@ class FirmwareUpdater(
                 )
                 onLog("Firmware install failed: ${error.message}")
                 installInProgress = false
+                cancelRequested = false
             }
         }
     }
 
+    fun cancelInstall() {
+        if (!installInProgress) {
+            publish(AppBus.Message.FirmwareStatus(status = "Brak aktywnej aktualizacji firmware", progress = 0))
+            return
+        }
+        cancelRequested = true
+        installInProgress = false
+        publish(AppBus.Message.FirmwareStatus(status = "Aktualizacja firmware anulowana", progress = 0))
+    }
+
     fun markBleTransferFinished() {
         installInProgress = false
+        cancelRequested = false
     }
 
     private fun fetchText(url: String): String {
@@ -155,6 +172,9 @@ class FirmwareUpdater(
             var total = 0L
             connection.inputStream.use { input ->
                 while (true) {
+                    if (cancelRequested) {
+                        throw InterruptedException("anulowano")
+                    }
                     val read = input.read(buffer)
                     if (read < 0) {
                         break

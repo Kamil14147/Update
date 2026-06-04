@@ -1,6 +1,13 @@
 name: Build ESP32 firmware
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "esp32/KejmilOLED/**"
+      - "tools/write_firmware_manifest.py"
+      - ".github/workflows/build-esp32-firmware.yml"
   workflow_dispatch:
     inputs:
       changelog:

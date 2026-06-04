@@ -1,6 +1,13 @@
 name: Build Android app
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "android-app/**"
+      - "tools/write_android_app_manifest.py"
+      - ".github/workflows/build-android-app.yml"
   workflow_dispatch:
     inputs:
       changelog:
@@ -73,7 +80,7 @@ jobs:
         run: |
           VERSION_NAME="${{ steps.version.outputs.name }}"
           VERSION_CODE="${{ steps.version.outputs.code }}"
-          APK_NAME="KEPS32v1-${VERSION_NAME}.apk"
+          APK_NAME="KESP32-${VERSION_NAME}.apk"
           REQUIRED_FLAG=""
           if [ "${{ inputs.required }}" = "true" ]; then
             REQUIRED_FLAG="--required"
@@ -96,7 +103,7 @@ jobs:
       - name: Upload app artifact
         uses: actions/upload-artifact@v4
         with:
-          name: KEPS32v1-${{ steps.version.outputs.name }}
+          name: KESP32-${{ steps.version.outputs.name }}
           path: |
             android-app/latest.json
-            android-app/releases/KEPS32v1-${{ steps.version.outputs.name }}.apk
+            android-app/releases/KESP32-${{ steps.version.outputs.name }}.apk

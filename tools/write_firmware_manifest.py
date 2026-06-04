@@ -25,7 +25,7 @@ def main() -> None:
     firmware_url = args.firmware_url.strip()
 
     if not firmware_url:
-        repo = os.environ.get("GITHUB_REPOSITORY", "krawc/kejmil-oled")
+        repo = os.environ.get("GITHUB_REPOSITORY", "Kamil14147/Update")
         branch = os.environ.get("GITHUB_REF_NAME", "main")
         firmware_url = (
             f"https://raw.githubusercontent.com/{repo}/{branch}/"
@@ -53,4 +53,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -18,7 +18,7 @@ data class AppUpdateManifest(
             val json = JSONObject(text)
             return AppUpdateManifest(
                 packageName = json.getString("packageName"),
-                name = json.optString("name", "KEPS32v1"),
+                name = json.optString("name", "KESP32"),
                 versionName = json.getString("versionName"),
                 versionCode = json.getLong("versionCode"),
                 apkUrl = json.getString("apkUrl"),

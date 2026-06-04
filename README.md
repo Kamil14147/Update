@@ -1,7 +1,7 @@
-# KEPS32v1 / Kejmil OLED
+# KESP32 / Kejmil OLED
 
 Kompletny projekt inteligentnego ekranika na ESP32 z OLED 0.96" 128x64.
-Telefon z Androidem (`KEPS32v1`) zbiera realne dane z systemu, wybiera najwazniejszy widget
+Telefon z Androidem (`KESP32`) zbiera realne dane z systemu, wybiera najwazniejszy widget
 i wysyla go przez BLE do ESP32 `Kejmil OLED`. ESP32 nie udaje danych telefonu:
 tylko odbiera komunikaty, renderuje OLED i obsluguje firmware OTA przez BLE.
 

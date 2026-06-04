@@ -29,6 +29,7 @@ class AppUpdater(
     private var downloadedApk: File? = null
     private var checkInProgress = false
     private var installInProgress = false
+    @Volatile private var cancelRequested = false
 
     fun publishCurrentVersion() {
         publish(
@@ -116,7 +117,7 @@ class AppUpdater(
         ) {
             publish(
                 AppBus.Message.AppUpdateStatus(
-                    status = "Zezwol na instalowanie aplikacji i wroc do KEPS32v1",
+                    status = "Zezwol na instalowanie aplikacji i wroc do KESP32",
                     progress = 0
                 )
             )
@@ -129,15 +130,20 @@ class AppUpdater(
         }
 
         installInProgress = true
+        cancelRequested = false
         publish(AppBus.Message.AppUpdateStatus(status = "Pobieram APK", progress = 0))
         executor.execute {
             try {
                 val apkFile = downloadedApk ?: downloadAndVerify(manifest)
+                if (cancelRequested) {
+                    throw InterruptedException("anulowano")
+                }
                 downloadedApk = apkFile
                 publish(AppBus.Message.AppUpdateStatus(status = "Otwieram instalator Androida", progress = 100))
                 handler.post {
                     openInstaller(apkFile)
                     installInProgress = false
+                    cancelRequested = false
                 }
             } catch (error: Exception) {
                 publish(
@@ -148,8 +154,19 @@ class AppUpdater(
                 )
                 onLog("App update failed: ${error.message}")
                 installInProgress = false
+                cancelRequested = false
             }
         }
+    }
+
+    fun cancelInstall() {
+        if (!installInProgress) {
+            publish(AppBus.Message.AppUpdateStatus(status = "Brak aktywnej aktualizacji aplikacji", progress = 0))
+            return
+        }
+        cancelRequested = true
+        installInProgress = false
+        publish(AppBus.Message.AppUpdateStatus(status = "Aktualizacja aplikacji anulowana", progress = 0))
     }
 
     private fun downloadAndVerify(manifest: AppUpdateManifest): File {
@@ -163,7 +180,7 @@ class AppUpdater(
         }
         val dir = File(appContext.cacheDir, ApkProvider.UPDATE_DIR).apply { mkdirs() }
         val safeVersion = manifest.versionName.replace(Regex("[^A-Za-z0-9._-]"), "_")
-        val file = File(dir, "KEPS32v1-$safeVersion.apk")
+        val file = File(dir, "KESP32-$safeVersion.apk")
         file.writeBytes(bytes)
         return file
     }
@@ -198,6 +215,9 @@ class AppUpdater(
             var total = 0L
             connection.inputStream.use { input ->
                 while (true) {
+                    if (cancelRequested) {
+                        throw InterruptedException("anulowano")
+                    }
                     val read = input.read(buffer)
                     if (read < 0) break
                     total += read
@@ -229,7 +249,7 @@ class AppUpdater(
         connection.readTimeout = HTTP_TIMEOUT_MS
         connection.instanceFollowRedirects = true
         connection.requestMethod = "GET"
-        connection.setRequestProperty("User-Agent", "KEPS32v1/${appContext.packageName}")
+        connection.setRequestProperty("User-Agent", "KESP32/${appContext.packageName}")
         connection.connect()
         if (connection.responseCode !in 200..299) {
             throw IllegalStateException("HTTP ${connection.responseCode}")

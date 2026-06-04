@@ -1,4 +1,4 @@
-# KEPS32v1 Android
+# KESP32 Android
 
 Aplikacja Android w Kotlinie. Dziala jako Foreground Service, sama laczy sie z
 ESP32 `Kejmil OLED`, zbiera realne dane z telefonu i wysyla do ESP32 tylko
@@ -59,7 +59,7 @@ pelnych MediaSession z aktywnych aplikacji.
 
 ## Ekrany aplikacji
 
-Aplikacja nazywa sie `KEPS32v1` i ma minimalistyczny UI z dolnym paskiem
+Aplikacja nazywa sie `KESP32` i ma minimalistyczny UI z dolnym paskiem
 nawigacji, ikonami, animowanymi przejsciami oraz przelacznikiem jasny/ciemny.
 
 Dolny pasek:
@@ -72,6 +72,8 @@ Dolny pasek:
 
 Jesli aplikacja wykryje nowszy firmware, pokazuje okno z modelem 3D ESP32,
 obecna wersja, nowa wersja, changelog, rozmiar pliku i przyciskiem `Aktualizuj`.
+Po starcie aktualizacji przyciski `Pozniej` i `Aktualizuj` znikaja; zostaje
+`Anuluj`, pasek postepu i przewidywany czas.
 Model 3D jest wbudowany w APK jako `app/src/main/assets/esp32.stl`.
 
 ## OTA przez BLE
@@ -79,7 +81,7 @@ Model 3D jest wbudowany w APK jako `app/src/main/assets/esp32.stl`.
 Adres manifestu ustawiasz w sekcji `Aktualizacja ESP32`. Domyslnie:
 
 ```text
-https://raw.githubusercontent.com/krawc/kejmil-oled/main/firmware/latest.json
+https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/latest.json
 ```
 
 Manifest musi wskazywac gotowy `.bin`:
@@ -89,7 +91,7 @@ Manifest musi wskazywac gotowy `.bin`:
   "device": "kejmil-oled-esp32",
   "name": "Kejmil OLED",
   "version": "1.0.1",
-  "firmwareUrl": "https://raw.githubusercontent.com/krawc/kejmil-oled/main/firmware/releases/kejmil-oled-esp32-1.0.1.bin",
+  "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.1.bin",
   "changelog": "Opis zmian",
   "sizeBytes": 123456,
   "sha256": "64 znaki SHA-256",
@@ -110,7 +112,7 @@ Przebieg:
 
 Aktualizacja nigdy nie startuje bez klikniecia `Aktualizuj`.
 
-## Aktualizacja aplikacji KEPS32v1
+## Aktualizacja aplikacji KESP32
 
 Aplikacja potrafi sprawdzac aktualizacje samej siebie podobnie jak firmware
 ESP32:
@@ -124,17 +126,17 @@ ESP32:
 
 Android nie pozwala zwyklej aplikacji zainstalowac update'u po cichu. Uzytkownik
 musi potwierdzic instalacje w systemowym oknie. Na Androidzie 8+ trzeba tez
-zezwolic KEPS32v1 na instalowanie nieznanych aplikacji.
+zezwolic KESP32 na instalowanie nieznanych aplikacji.
 
 Manifest aplikacji:
 
 ```json
 {
   "packageName": "pl.kejmil.oledsender",
-  "name": "KEPS32v1",
+  "name": "KESP32",
   "versionName": "1.1",
   "versionCode": 2,
-  "apkUrl": "https://raw.githubusercontent.com/krawc/kejmil-oled/main/android-app/releases/KEPS32v1-1.1.apk",
+  "apkUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/releases/KESP32-1.1.apk",
   "changelog": "Opis zmian",
   "sizeBytes": 1234567,
   "sha256": "64 znaki SHA-256",
@@ -182,15 +184,15 @@ versionName "1.1"
 Adres manifestu aplikacji w zakladce `Update`:
 
 ```text
-https://raw.githubusercontent.com/<user>/<repo>/<branch>/android-app/latest.json
+https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/latest.json
 ```
 
 ## Konfiguracja aktualizacji z GitHuba
 
 1. Wgraj repo na GitHuba. Repo musi byc publiczne albo pliki manifestu i `.bin`
    musza byc dostepne po HTTPS bez logowania.
-2. Jesli repo nie nazywa sie `krawc/kejmil-oled`, wpisz w zakladce `Update`
-   swoj URL manifestu:
+2. Domyslnie aplikacja wskazuje `Kamil14147/Update`. Jesli uzywasz innego repo,
+   wpisz w zakladce `Update` swoj URL manifestu:
 
 ```text
 https://raw.githubusercontent.com/<user>/<repo>/<branch>/firmware/latest.json
@@ -227,4 +229,4 @@ okno aktualizacji z modelem 3D.
 - OTA nie startuje: manifest ma zly URL, `device`, rozmiar, SHA-256 albo ESP32
   ma starszy firmware bez serwisu OTA.
 - Update aplikacji nie instaluje sie: APK jest podpisany innym kluczem albo
-  Android nie ma wlaczonej zgody na instalowanie z KEPS32v1.
+  Android nie ma wlaczonej zgody na instalowanie z KESP32.

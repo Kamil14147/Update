@@ -41,8 +41,10 @@ object AppBus {
         data object RequestFirmwareVersion : Message()
         data object CheckFirmwareUpdates : Message()
         data object InstallFirmwareUpdate : Message()
+        data object CancelFirmwareUpdate : Message()
         data object CheckAppUpdates : Message()
         data object InstallAppUpdate : Message()
+        data object CancelAppUpdate : Message()
         data class DebugJson(val json: String) : Message()
     }
 

@@ -38,7 +38,7 @@ Wybierz typ plytki np. `ESP32 Dev Module`.
 Wersja jest w pliku `.ino`:
 
 ```cpp
-static const char *FW_VERSION = "1.0.0";
+static const char *FW_VERSION = "1.0.1";
 ```
 
 Aplikacja Android odczytuje ja przez BLE i porownuje z manifestem GitHuba.
@@ -127,4 +127,3 @@ baterie telefonu i `Kejmil`.
   firmware zostaje aktywny.
 - Krzaki w polskich znakach: OLED biblioteki Adafruit nie ma pelnego fontu PL,
   wiec firmware zamienia polskie znaki na ASCII.
-

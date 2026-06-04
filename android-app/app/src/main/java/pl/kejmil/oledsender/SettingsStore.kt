@@ -50,8 +50,8 @@ class SettingsStore(context: Context) {
         private const val KEY_FIRMWARE_MANIFEST_URL = "firmware_manifest_url"
         private const val KEY_APP_UPDATE_MANIFEST_URL = "app_update_manifest_url"
         const val DEFAULT_FIRMWARE_MANIFEST_URL =
-            "https://raw.githubusercontent.com/krawc/kejmil-oled/main/firmware/latest.json"
+            "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/latest.json"
         const val DEFAULT_APP_UPDATE_MANIFEST_URL =
-            "https://raw.githubusercontent.com/krawc/kejmil-oled/main/android-app/latest.json"
+            "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/latest.json"
     }
 }

@@ -10,7 +10,7 @@ Minimalne pola:
   "device": "kejmil-oled-esp32",
   "name": "Kejmil OLED",
   "version": "1.0.1",
-  "firmwareUrl": "https://raw.githubusercontent.com/krawc/kejmil-oled/main/firmware/releases/kejmil-oled-esp32-1.0.1.bin",
+  "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.1.bin",
   "changelog": "Opis zmian",
   "sizeBytes": 1048576,
   "sha256": "64-znakowy-hash-sha256",
@@ -37,4 +37,3 @@ https://raw.githubusercontent.com/<user>/<repo>/main/firmware/latest.json
 ```
 
 Ten adres ustaw w aplikacji na ekranie `Aktualizacja ESP32`.
-

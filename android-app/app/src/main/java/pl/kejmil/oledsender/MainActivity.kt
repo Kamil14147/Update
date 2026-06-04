@@ -34,6 +34,7 @@ import android.widget.TextView
 import android.widget.Toast
 import org.json.JSONObject
 import java.util.Locale
+import kotlin.math.roundToLong
 
 class MainActivity : Activity() {
     private lateinit var settings: SettingsStore
@@ -94,6 +95,11 @@ class MainActivity : Activity() {
     private var updateDialogStatusView: TextView? = null
     private var updateDialogProgress: ProgressBar? = null
     private var updateDialogInstallButton: View? = null
+    private var updateDialogEtaView: TextView? = null
+    private var updateDialogActionArea: LinearLayout? = null
+    private var activeUpdateKind: UpdateKind? = null
+    private var firmwareProgressStartedAt = 0L
+    private var appProgressStartedAt = 0L
 
     private val busListener: (AppBus.Message) -> Unit = { message ->
         runOnUiThread {
@@ -107,6 +113,7 @@ class MainActivity : Activity() {
                 is AppBus.Message.AppUpdateStatus -> updateAppStatus(message)
                 is AppBus.Message.CheckAppUpdates -> appUpdater.checkForUpdates(automatic = false)
                 is AppBus.Message.InstallAppUpdate -> appUpdater.installLatest()
+                is AppBus.Message.CancelAppUpdate -> appUpdater.cancelInstall()
                 is AppBus.Message.Log -> appendLog(message.text)
                 else -> Unit
             }
@@ -229,15 +236,10 @@ class MainActivity : Activity() {
             setPadding(dp(14), 0, 0, 0)
         }
         textBox.addView(TextView(this).apply {
-            text = "KEPS32v1"
+            text = "KESP32"
             textSize = 24f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(palette.text)
-        })
-        textBox.addView(TextView(this).apply {
-            text = "OLED, BLE, update i realne dane z telefonu"
-            textSize = 13f
-            setTextColor(palette.mutedText)
         })
         hero.addView(textBox, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
 
@@ -401,6 +403,17 @@ class MainActivity : Activity() {
         actionButton(actionPanel, R.drawable.ic_action_permission, "Uprawnienia") {
             requestRuntimePermissions()
         }
+        actionButton(actionPanel, R.drawable.ic_action_service, "Wylacz usluge") {
+            KejmilForegroundService.stop(this)
+        }
+        actionButton(actionPanel, R.drawable.ic_action_app, "Zamknij aplikacje") {
+            KejmilForegroundService.stop(this)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                finishAndRemoveTask()
+            } else {
+                finish()
+            }
+        }
         root.addView(actionPanel, spaced())
 
         return root
@@ -507,7 +520,7 @@ class MainActivity : Activity() {
 
     private fun appUpdatePanel(): LinearLayout {
         val panel = panel()
-        panel.addView(sectionTitle("KEPS32v1 app"))
+        panel.addView(sectionTitle("KESP32 app"))
 
         appCurrentVersionView = sectionText("Obecna wersja: nie odczytano")
         appLatestVersionView = sectionText("Najnowsza wersja: nie sprawdzono")
@@ -665,8 +678,12 @@ class MainActivity : Activity() {
         }
         status.status?.let { firmwareStatusText = it }
         status.progress?.let {
-            firmwareProgress.progress = it.coerceIn(0, 100)
-            updateDialogProgress?.progress = it.coerceIn(0, 100)
+            val progress = it.coerceIn(0, 100)
+            firmwareProgress.progress = progress
+            if (activeUpdateKind == UpdateKind.FIRMWARE) {
+                updateDialogProgress?.progress = progress
+                updateDialogEtaView?.text = etaText(UpdateKind.FIRMWARE, progress)
+            }
         }
         status.updateAvailable?.let { firmwareUpdateAvailable = it }
         status.required?.let { firmwareRequired = it }
@@ -704,8 +721,12 @@ class MainActivity : Activity() {
         }
         status.status?.let { appStatusText = it }
         status.progress?.let {
-            appProgress.progress = it.coerceIn(0, 100)
-            updateDialogProgress?.progress = it.coerceIn(0, 100)
+            val progress = it.coerceIn(0, 100)
+            appProgress.progress = progress
+            if (activeUpdateKind == UpdateKind.APP) {
+                updateDialogProgress?.progress = progress
+                updateDialogEtaView?.text = etaText(UpdateKind.APP, progress)
+            }
         }
         status.updateAvailable?.let { appUpdateAvailable = it }
         status.required?.let { appRequired = it }
@@ -760,6 +781,7 @@ class MainActivity : Activity() {
     private fun showFirmwareUpdateDialog() {
         val modelView = Esp32ModelView(this)
         val content = dialogShell("Nowy firmware ESP32")
+        activeUpdateKind = null
         content.addView(modelView, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             dp(238)
@@ -777,15 +799,26 @@ class MainActivity : Activity() {
         content.addView(updateDialogStatusView, matchWidth())
         updateDialogProgress = progressBar()
         content.addView(updateDialogProgress, matchWidth().apply { topMargin = dp(6) })
-        updateDialogInstallButton = actionButton(content, R.drawable.ic_action_install, "Aktualizuj") {
+        updateDialogEtaView = sectionText("Przewidywany czas: --").apply {
+            visibility = View.GONE
+        }
+        content.addView(updateDialogEtaView, matchWidth())
+
+        val actionButtons = mutableListOf<View>()
+        val installButton = actionButton(content, R.drawable.ic_action_install, "Aktualizuj") {
+            enterDialogUpdateMode(content, UpdateKind.FIRMWARE, actionButtons) {
+                AppBus.publish(AppBus.Message.CancelFirmwareUpdate)
+            }
             saveFirmwareUrl(showToast = false)
-            updateDialogInstallButton?.isEnabled = false
             updateDialogStatusView?.text = "Startuje aktualizacja"
             AppBus.publish(AppBus.Message.InstallFirmwareUpdate)
         }
-        actionButton(content, R.drawable.ic_action_check, "Pozniej") {
+        updateDialogInstallButton = installButton
+        actionButtons += installButton
+        val laterButton = actionButton(content, R.drawable.ic_action_check, "Pozniej") {
             updateDialog?.dismiss()
         }
+        actionButtons += laterButton
         showDialog(
             content = content,
             onShow = { modelView.onResume() },
@@ -794,7 +827,8 @@ class MainActivity : Activity() {
     }
 
     private fun showAppUpdateDialog() {
-        val content = dialogShell("Nowa wersja KEPS32v1")
+        val content = dialogShell("Nowa wersja KESP32")
+        activeUpdateKind = null
         val appIcon = ImageView(this).apply {
             setImageResource(R.drawable.ic_action_app)
             setColorFilter(Color.WHITE)
@@ -824,16 +858,50 @@ class MainActivity : Activity() {
         content.addView(updateDialogStatusView, matchWidth())
         updateDialogProgress = progressBar()
         content.addView(updateDialogProgress, matchWidth().apply { topMargin = dp(6) })
-        updateDialogInstallButton = actionButton(content, R.drawable.ic_action_install, "Aktualizuj aplikacje") {
+        updateDialogEtaView = sectionText("Przewidywany czas: --").apply {
+            visibility = View.GONE
+        }
+        content.addView(updateDialogEtaView, matchWidth())
+
+        val actionButtons = mutableListOf<View>()
+        val installButton = actionButton(content, R.drawable.ic_action_install, "Aktualizuj aplikacje") {
+            enterDialogUpdateMode(content, UpdateKind.APP, actionButtons) {
+                AppBus.publish(AppBus.Message.CancelAppUpdate)
+            }
             saveAppUpdateUrl(showToast = false)
-            updateDialogInstallButton?.isEnabled = false
             updateDialogStatusView?.text = "Pobieram APK"
             appUpdater.installLatest()
         }
-        actionButton(content, R.drawable.ic_action_check, "Pozniej") {
+        updateDialogInstallButton = installButton
+        actionButtons += installButton
+        val laterButton = actionButton(content, R.drawable.ic_action_check, "Pozniej") {
             updateDialog?.dismiss()
         }
+        actionButtons += laterButton
         showDialog(content)
+    }
+
+    private fun enterDialogUpdateMode(
+        content: LinearLayout,
+        kind: UpdateKind,
+        hideButtons: List<View>,
+        onCancel: () -> Unit
+    ) {
+        activeUpdateKind = kind
+        val now = System.currentTimeMillis()
+        if (kind == UpdateKind.FIRMWARE) {
+            firmwareProgressStartedAt = now
+        } else {
+            appProgressStartedAt = now
+        }
+        hideButtons.forEach { it.visibility = View.GONE }
+        updateDialogEtaView?.visibility = View.VISIBLE
+        updateDialogEtaView?.text = "Przewidywany czas: licze..."
+        updateDialogInstallButton = null
+        actionButton(content, R.drawable.ic_action_check, "Anuluj") {
+            onCancel()
+            updateDialog?.dismiss()
+        }
     }
 
     private fun dialogShell(title: String): LinearLayout {
@@ -874,6 +942,8 @@ class MainActivity : Activity() {
                 updateDialogStatusView = null
                 updateDialogProgress = null
                 updateDialogInstallButton = null
+                updateDialogEtaView = null
+                activeUpdateKind = null
             }
         }
         dialog.show()
@@ -1079,6 +1149,35 @@ class MainActivity : Activity() {
         return String.format(Locale.US, "%.2f MB", mb)
     }
 
+    private fun etaText(kind: UpdateKind, progress: Int): String {
+        if (progress >= 100) {
+            return "Przewidywany czas: zakonczono"
+        }
+        if (progress <= 0) {
+            return "Przewidywany czas: licze..."
+        }
+        val now = System.currentTimeMillis()
+        val startedAt = when (kind) {
+            UpdateKind.FIRMWARE -> firmwareProgressStartedAt
+            UpdateKind.APP -> appProgressStartedAt
+        }.takeIf { it > 0L } ?: now
+        val elapsed = (now - startedAt).coerceAtLeast(1L)
+        val total = (elapsed.toDouble() * 100.0 / progress.toDouble()).roundToLong()
+        val remaining = (total - elapsed).coerceAtLeast(0L)
+        return "Przewidywany czas: ${formatDuration(remaining)}"
+    }
+
+    private fun formatDuration(ms: Long): String {
+        val seconds = (ms / 1000L).coerceAtLeast(0L)
+        val minutes = seconds / 60L
+        val rest = seconds % 60L
+        return if (minutes > 0L) {
+            "${minutes} min ${rest} s"
+        } else {
+            "${rest} s"
+        }
+    }
+
     private fun matchWidth(): LinearLayout.LayoutParams {
         return LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -1144,6 +1243,11 @@ class MainActivity : Activity() {
         SETTINGS("Ustaw.", R.drawable.ic_tab_settings),
         UPDATE("Update", R.drawable.ic_tab_update),
         LOGS("Logi", R.drawable.ic_tab_logs)
+    }
+
+    private enum class UpdateKind {
+        FIRMWARE,
+        APP
     }
 
     companion object {
