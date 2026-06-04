@@ -2,11 +2,11 @@
   "device": "kejmil-oled-esp32",
   "name": "Kejmil OLED",
   "version": "1.0.1",
-  "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.0.bin",
+  "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.1.bin",
   "changelog": "Firmware build from GitHub Actions",
   "sizeBytes": 1177808,
-  "sha256": "437f35d39374b979c000394f3d18d8c0f30ef6cf96bd50d863e5d6a5f7c2ee67",
+  "sha256": "937b8cba9e1aeb8c785d2c596d77585c6b5b7efa4067b0319689293629fa58ee",
   "required": false,
   "protocol": "ble-ota-v1",
-  "builtAt": "2026-06-04T19:10:29.533322+00:00"
+  "builtAt": "2026-06-04T19:18:15.593203+00:00"
 }
