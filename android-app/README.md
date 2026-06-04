@@ -152,24 +152,26 @@ telefonie. Jesli podpis jest inny, Android odmowi aktualizacji.
 1. Wygeneruj release keystore lokalnie i zachowaj go bezpiecznie:
 
 ```powershell
-keytool -genkeypair -v -keystore keps32v1-release.jks -alias keps32v1 `
+keytool -genkeypair -v -keystore kesp32-release.jks -alias kesp32 `
   -keyalg RSA -keysize 2048 -validity 10000
 ```
 
 2. Zakoduj keystore do base64 i dodaj jako sekret GitHuba
-   `KEPS32V1_KEYSTORE_BASE64`:
+   `KESP32_KEYSTORE_BASE64`:
 
 ```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("keps32v1-release.jks"))
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("kesp32-release.jks"))
 ```
 
 3. Dodaj tez sekrety:
 
 ```text
-KEPS32V1_KEYSTORE_PASSWORD
-KEPS32V1_KEY_ALIAS
-KEPS32V1_KEY_PASSWORD
+KESP32_KEYSTORE_PASSWORD
+KESP32_KEY_ALIAS
+KESP32_KEY_PASSWORD
 ```
+
+Workflow akceptuje tez stare sekrety `KEPS32V1_*`, jesli juz byly ustawione.
 
 4. Przy nowej wersji aplikacji zwieksz w `android-app/app/build.gradle`:
 
@@ -178,8 +180,10 @@ versionCode 2
 versionName "1.1"
 ```
 
-5. Uruchom workflow `Build Android app`. Zbuduje podpisany APK, wrzuci go do
-   `android-app/releases/` i odswiezy `android-app/latest.json`.
+5. Uruchom workflow `Build Android app`. Jesli sekrety podpisu sa ustawione,
+   zbuduje podpisany APK, wrzuci go do `android-app/releases/` i odswiezy
+   `android-app/latest.json`. Bez sekretow workflow zbuduje tylko debug APK jako
+   artefakt testowy i nie opublikuje go jako bezpiecznego self-update.
 
 Adres manifestu aplikacji w zakladce `Update`:
 

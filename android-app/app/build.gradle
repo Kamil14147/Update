@@ -3,10 +3,14 @@ plugins {
     id "org.jetbrains.kotlin.android"
 }
 
-def releaseStoreFile = System.getenv("KEPS32V1_KEYSTORE_FILE")
-def releaseStorePassword = System.getenv("KEPS32V1_KEYSTORE_PASSWORD")
-def releaseKeyAlias = System.getenv("KEPS32V1_KEY_ALIAS")
-def releaseKeyPassword = System.getenv("KEPS32V1_KEY_PASSWORD")
+def envOrLegacy(String key, String legacyKey) {
+    return System.getenv(key) ?: System.getenv(legacyKey)
+}
+
+def releaseStoreFile = envOrLegacy("KESP32_KEYSTORE_FILE", "KEPS32V1_KEYSTORE_FILE")
+def releaseStorePassword = envOrLegacy("KESP32_KEYSTORE_PASSWORD", "KEPS32V1_KEYSTORE_PASSWORD")
+def releaseKeyAlias = envOrLegacy("KESP32_KEY_ALIAS", "KEPS32V1_KEY_ALIAS")
+def releaseKeyPassword = envOrLegacy("KESP32_KEY_PASSWORD", "KEPS32V1_KEY_PASSWORD")
 def hasReleaseSigning = releaseStoreFile && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
 
 android {

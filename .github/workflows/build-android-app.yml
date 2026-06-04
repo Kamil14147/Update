@@ -38,22 +38,26 @@ jobs:
           java-version: "17"
 
       - name: Decode release keystore
+        id: signing
         shell: bash
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEPS32V1_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEPS32V1_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEPS32V1_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEPS32V1_KEY_PASSWORD }}
+          KEYSTORE_BASE64: ${{ secrets.KESP32_KEYSTORE_BASE64 || secrets.KEPS32V1_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KESP32_KEYSTORE_PASSWORD || secrets.KEPS32V1_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KESP32_KEY_ALIAS || secrets.KEPS32V1_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KESP32_KEY_PASSWORD || secrets.KEPS32V1_KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "Missing KEPS32V1_KEYSTORE_BASE64 secret"
-            exit 1
-          fi
           if [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
-            echo "Missing one of KEPS32V1_KEYSTORE_PASSWORD, KEPS32V1_KEY_ALIAS, KEPS32V1_KEY_PASSWORD"
-            exit 1
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "Release signing secrets are incomplete; building debug APK only."
+            exit 0
           fi
-          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keps32v1-release.jks"
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "Missing KESP32_KEYSTORE_BASE64; building debug APK only."
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/kesp32-release.jks"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
 
       - name: Read app version
         id: version
@@ -65,17 +69,26 @@ jobs:
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
       - name: Build signed release APK
+        if: steps.signing.outputs.signed == 'true'
         working-directory: android-app
         env:
-          KEPS32V1_KEYSTORE_FILE: ${{ runner.temp }}/keps32v1-release.jks
-          KEPS32V1_KEYSTORE_PASSWORD: ${{ secrets.KEPS32V1_KEYSTORE_PASSWORD }}
-          KEPS32V1_KEY_ALIAS: ${{ secrets.KEPS32V1_KEY_ALIAS }}
-          KEPS32V1_KEY_PASSWORD: ${{ secrets.KEPS32V1_KEY_PASSWORD }}
+          KESP32_KEYSTORE_FILE: ${{ runner.temp }}/kesp32-release.jks
+          KESP32_KEYSTORE_PASSWORD: ${{ secrets.KESP32_KEYSTORE_PASSWORD || secrets.KEPS32V1_KEYSTORE_PASSWORD }}
+          KESP32_KEY_ALIAS: ${{ secrets.KESP32_KEY_ALIAS || secrets.KEPS32V1_KEY_ALIAS }}
+          KESP32_KEY_PASSWORD: ${{ secrets.KESP32_KEY_PASSWORD || secrets.KEPS32V1_KEY_PASSWORD }}
         run: |
           chmod +x ./gradlew
           ./gradlew assembleRelease
 
+      - name: Build debug APK
+        if: steps.signing.outputs.signed != 'true'
+        working-directory: android-app
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+
       - name: Publish app files in repo
+        if: steps.signing.outputs.signed == 'true'
         shell: bash
         run: |
           VERSION_NAME="${{ steps.version.outputs.name }}"
@@ -107,3 +120,5 @@ jobs:
           path: |
             android-app/latest.json
             android-app/releases/KESP32-${{ steps.version.outputs.name }}.apk
+            android-app/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: ignore
