@@ -3,7 +3,7 @@
   "name": "Kejmil OLED",
   "version": "1.0.3",
   "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.3.bin",
-  "changelog": "Firmware build from GitHub Actions",
+  "changelog": "Add more widget screens and timeout-based return to the home clock",
   "sizeBytes": 1181376,
   "sha256": "55f0b765c1636183e2c863bb82bb3b26c21b2854c87ed27b35d5571853cd88a7",
   "required": false,
