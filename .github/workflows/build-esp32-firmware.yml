@@ -62,6 +62,7 @@ jobs:
         shell: bash
         run: |
           VERSION="${{ steps.version.outputs.version }}"
+          CHANGELOG="${{ github.event.inputs.changelog || 'Firmware build from GitHub Actions' }}"
           BIN_NAME="kejmil-oled-esp32-${VERSION}.bin"
           REQUIRED_FLAG=""
           if [ "${{ inputs.required }}" = "true" ]; then
@@ -72,7 +73,7 @@ jobs:
             --bin "firmware/releases/${BIN_NAME}" \
             --version "$VERSION" \
             --output firmware/latest.json \
-            --changelog "${{ inputs.changelog }}" \
+            --changelog "$CHANGELOG" \
             $REQUIRED_FLAG
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

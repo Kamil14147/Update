@@ -9,8 +9,8 @@ Minimalne pola:
 {
   "device": "kejmil-oled-esp32",
   "name": "Kejmil OLED",
-  "version": "1.0.1",
-  "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.1.bin",
+  "version": "1.0.2",
+  "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.2.bin",
   "changelog": "Opis zmian",
   "sizeBytes": 1048576,
   "sha256": "64-znakowy-hash-sha256",

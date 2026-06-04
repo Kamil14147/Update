@@ -27,8 +27,10 @@ class FirmwareUpdater(
     @Volatile private var cancelRequested = false
 
     fun setCurrentEsp32Version(version: String) {
-        currentEsp32Version = version
-        publish(AppBus.Message.FirmwareStatus(esp32Version = version))
+        val cleanVersion = version.trim()
+        currentEsp32Version = cleanVersion
+        publish(AppBus.Message.FirmwareStatus(esp32Version = cleanVersion))
+        latestManifest?.let { publishManifestStatus(it) }
     }
 
     fun checkForUpdates(automatic: Boolean) {
@@ -52,25 +54,7 @@ class FirmwareUpdater(
                     throw IllegalArgumentException("Manifest jest dla innego urzadzenia: ${manifest.device}")
                 }
                 latestManifest = manifest
-                val current = currentEsp32Version
-                val updateAvailable = current == null || compareVersions(manifest.version, current) > 0
-                val status = when {
-                    current == null -> "Manifest pobrany. Polacz ESP32, zeby porownac wersje."
-                    updateAvailable -> "Dostepna aktualizacja ${manifest.version}"
-                    else -> "Firmware ESP32 jest aktualny"
-                }
-                publish(
-                    AppBus.Message.FirmwareStatus(
-                        latestVersion = manifest.version,
-                        changelog = manifest.changelog,
-                        firmwareUrl = manifest.firmwareUrl,
-                        sizeBytes = manifest.sizeBytes,
-                        status = status,
-                        progress = 0,
-                        updateAvailable = updateAvailable,
-                        required = manifest.required
-                    )
-                )
+                publishManifestStatus(manifest)
                 onLog("Firmware manifest OK: ${manifest.version}")
             } catch (error: Exception) {
                 publish(
@@ -97,7 +81,11 @@ class FirmwareUpdater(
             return
         }
         val current = currentEsp32Version
-        if (current != null && compareVersions(manifest.version, current) <= 0 && !manifest.required) {
+        if (current == null) {
+            publish(AppBus.Message.FirmwareStatus(status = "Najpierw odczytaj wersje ESP32"))
+            return
+        }
+        if (compareVersions(manifest.version, current) <= 0) {
             publish(AppBus.Message.FirmwareStatus(status = "Ta wersja nie jest nowsza od ESP32"))
             return
         }
@@ -228,14 +216,39 @@ class FirmwareUpdater(
         handler.post { AppBus.publish(message) }
     }
 
+    private fun publishManifestStatus(manifest: FirmwareManifest) {
+        val current = currentEsp32Version
+        val updateAvailable = current != null && compareVersions(manifest.version, current) > 0
+        val status = when {
+            current == null -> "Manifest pobrany. Czekam na wersje ESP32."
+            updateAvailable -> "Dostepna aktualizacja ${manifest.version}"
+            else -> "Firmware ESP32 jest aktualny"
+        }
+        publish(
+            AppBus.Message.FirmwareStatus(
+                latestVersion = manifest.version,
+                changelog = manifest.changelog,
+                firmwareUrl = manifest.firmwareUrl,
+                sizeBytes = manifest.sizeBytes,
+                status = status,
+                progress = 0,
+                updateAvailable = updateAvailable,
+                required = manifest.required && updateAvailable
+            )
+        )
+        onLog(
+            "Firmware compare: current=${current ?: "unknown"}, latest=${manifest.version}, update=$updateAvailable"
+        )
+    }
+
     private fun sha256(bytes: ByteArray): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
         return digest.joinToString("") { "%02x".format(Locale.US, it.toInt() and 0xFF) }
     }
 
     private fun compareVersions(left: String, right: String): Int {
-        val leftParts = left.split('.', '-', '+').map { it.toIntOrNull() ?: 0 }
-        val rightParts = right.split('.', '-', '+').map { it.toIntOrNull() ?: 0 }
+        val leftParts = versionParts(left)
+        val rightParts = versionParts(right)
         val count = maxOf(leftParts.size, rightParts.size)
         for (index in 0 until count) {
             val l = leftParts.getOrElse(index) { 0 }
@@ -243,6 +256,13 @@ class FirmwareUpdater(
             if (l != r) return l.compareTo(r)
         }
         return 0
+    }
+
+    private fun versionParts(version: String): List<Int> {
+        val cleaned = version.trim().removePrefix("v").removePrefix("V")
+        return cleaned.split('.', '-', '_', '+')
+            .map { part -> part.takeWhile { it.isDigit() }.toIntOrNull() ?: 0 }
+            .ifEmpty { listOf(0) }
     }
 
     companion object {

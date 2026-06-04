@@ -38,7 +38,7 @@ Wybierz typ plytki np. `ESP32 Dev Module`.
 Wersja jest w pliku `.ino`:
 
 ```cpp
-static const char *FW_VERSION = "1.0.1";
+static const char *FW_VERSION = "1.0.2";
 ```
 
 Aplikacja Android odczytuje ja przez BLE i porownuje z manifestem GitHuba.
@@ -83,7 +83,7 @@ Protokol:
 1. Android wysyla na control:
 
 ```json
-{"cmd":"begin","device":"kejmil-oled-esp32","version":"1.0.1","size":123456,"sha256":"..."}
+{"cmd":"begin","device":"kejmil-oled-esp32","version":"1.0.2","size":123456,"sha256":"..."}
 ```
 
 2. ESP32 sprawdza urzadzenie, rozmiar i miejsce OTA, uruchamia `Update.begin`

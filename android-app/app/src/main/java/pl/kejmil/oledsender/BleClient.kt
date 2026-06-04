@@ -113,6 +113,7 @@ class BleClient(
         cancelOta("Aktualizacja OTA anulowana")
     }
 
+    @SuppressLint("MissingPermission")
     fun startFirmwareUpdate(manifest: FirmwareManifest, firmware: ByteArray) {
         val control = otaControl
         val data = otaData
@@ -134,6 +135,9 @@ class BleClient(
         otaTransfer = OtaTransfer(manifest = manifest, firmware = firmware)
         operations.clear()
         publishOtaStatus("Przygotowuje ESP32 do OTA", progress = 0)
+        if (hasBlePermissions()) {
+            gatt?.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)
+        }
 
         val begin = JSONObject()
             .put("cmd", "begin")
@@ -272,7 +276,7 @@ class BleClient(
                 .build()
         )
         val settings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+            .setScanMode(ScanSettings.SCAN_MODE_BALANCED)
             .build()
         scanner.startScan(filters, settings, scanCallback)
         handler.postDelayed({
@@ -329,11 +333,15 @@ class BleClient(
 
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            if (!isCurrentGatt(gatt)) {
+                closeStaleGatt(gatt)
+                return
+            }
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 reconnectDelayMs = 5000L
                 setStatus("BLE polaczone")
                 if (hasBlePermissions()) {
-                    gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)
+                    gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_BALANCED)
                 }
                 requestMtu(gatt)
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
@@ -348,16 +356,19 @@ class BleClient(
         }
 
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
+            if (!isCurrentGatt(gatt)) return
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                payloadSize = maxOf(20, mtu - 3)
+                payloadSize = maxOf(20, minOf(mtu - 3, OTA_CHUNK_LIMIT))
                 onLog("BLE MTU $mtu, payload $payloadSize")
             }
             discoverServices(gatt)
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+            if (!isCurrentGatt(gatt)) return
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 setStatus("Blad uslug BLE: $status")
+                closeGatt()
                 scheduleReconnect()
                 return
             }
@@ -372,6 +383,7 @@ class BleClient(
 
             if (uartRx == null) {
                 setStatus("Brak UART RX na ESP32")
+                closeGatt()
                 scheduleReconnect()
                 return
             }
@@ -392,6 +404,7 @@ class BleClient(
             characteristic: BluetoothGattCharacteristic,
             status: Int
         ) {
+            if (!isCurrentGatt(gatt)) return
             val completed = activeOperation as? BleOperation.CharacteristicWrite
             activeOperation = null
             if (status == BluetoothGatt.GATT_SUCCESS) {
@@ -411,6 +424,7 @@ class BleClient(
             descriptor: BluetoothGattDescriptor,
             status: Int
         ) {
+            if (!isCurrentGatt(gatt)) return
             val completed = activeOperation as? BleOperation.DescriptorWrite
             activeOperation = null
             if (status != BluetoothGatt.GATT_SUCCESS) {
@@ -423,6 +437,7 @@ class BleClient(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic
         ) {
+            if (!isCurrentGatt(gatt)) return
             @Suppress("DEPRECATION")
             handleNotification(characteristic.uuid, characteristic.value ?: ByteArray(0))
         }
@@ -432,6 +447,7 @@ class BleClient(
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
+            if (!isCurrentGatt(gatt)) return
             handleNotification(characteristic.uuid, value)
         }
     }
@@ -442,7 +458,7 @@ class BleClient(
             scheduleReconnect()
             return
         }
-        if (!currentGatt.requestMtu(517)) {
+        if (!currentGatt.requestMtu(PREFERRED_MTU)) {
             discoverServices(currentGatt)
         }
     }
@@ -603,8 +619,20 @@ class BleClient(
         onLog("Ponowne polaczenie za ${delay / 1000}s")
         handler.postDelayed({
             reconnectScheduled = false
-            if (started) startScan()
+            if (started && gatt == null) startScan()
         }, delay)
+    }
+
+    private fun isCurrentGatt(callbackGatt: BluetoothGatt): Boolean {
+        return gatt === callbackGatt
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun closeStaleGatt(callbackGatt: BluetoothGatt) {
+        if (hasBlePermissions()) {
+            callbackGatt.close()
+        }
+        onLog("Pominieto stare zdarzenie BLE GATT")
     }
 
     private fun setStatus(status: String) {
@@ -673,7 +701,8 @@ class BleClient(
         private const val SCAN_TIMEOUT_MS = 8000L
         private const val MAX_RECONNECT_DELAY_MS = 60000L
         private const val MAX_JSON_BYTES = 768
-        private const val OTA_CHUNK_LIMIT = 512
+        private const val PREFERRED_MTU = 247
+        private const val OTA_CHUNK_LIMIT = 244
         private val UART_SERVICE_UUID: UUID = UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e")
         private val UART_RX_UUID: UUID = UUID.fromString("6e400002-b5a3-f393-e0a9-e50e24dcca9e")
         private val UART_TX_UUID: UUID = UUID.fromString("6e400003-b5a3-f393-e0a9-e50e24dcca9e")

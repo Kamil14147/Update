@@ -1,12 +1,12 @@
 {
   "device": "kejmil-oled-esp32",
   "name": "Kejmil OLED",
-  "version": "1.0.1",
-  "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.1.bin",
-  "changelog": "Faster BLE OTA, simplified OLED header, and KESP32 update flow",
-  "sizeBytes": 1177648,
-  "sha256": "9f4f5fd9f35b1ec1c1a1af381f44454805138868b5bb6263d17521921c3116d7",
+  "version": "1.0.2",
+  "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.2.bin",
+  "changelog": "Fix firmware version checks and improve BLE connection stability",
+  "sizeBytes": 1177712,
+  "sha256": "86438efc3d2c3ead7281ad8bde4f52d9e21c5f191e59e14bff1f0736b6dbfc35",
   "required": false,
   "protocol": "ble-ota-v1",
-  "builtAt": "2026-06-04T19:42:48.452472+00:00"
+  "builtAt": "2026-06-04T20:09:49.491620+00:00"
 }
