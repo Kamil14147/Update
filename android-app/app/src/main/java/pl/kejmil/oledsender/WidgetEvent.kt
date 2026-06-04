@@ -21,6 +21,9 @@ data class WidgetEvent(
         val json = JSONObject(payload.toString())
         json.put("type", type.wireType)
         json.put("priority", priority)
+        if (timeoutMs > 0L) {
+            json.put("timeout", timeoutMs.coerceAtMost(30_000L).toInt())
+        }
         return json.toString()
     }
 }

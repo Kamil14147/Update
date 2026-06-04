@@ -26,7 +26,7 @@ static const bool BUTTON_ENABLED = true;
 
 static const char *DEVICE_ID = "kejmil-oled-esp32";
 static const char *BLE_DEVICE_NAME = "Kejmil OLED";
-static const char *FW_VERSION = "1.0.2";
+static const char *FW_VERSION = "1.0.3";
 static const char *UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 static const char *UART_RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 static const char *UART_TX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
@@ -54,7 +54,12 @@ enum Screen {
   SCREEN_NOTIFICATION,
   SCREEN_CALL,
   SCREEN_BATTERY,
-  SCREEN_WEATHER
+  SCREEN_WEATHER,
+  SCREEN_WIFI,
+  SCREEN_STORAGE,
+  SCREEN_MEMORY,
+  SCREEN_ALARM,
+  SCREEN_SYSTEM
 };
 
 bool oledReady = false;
@@ -94,6 +99,25 @@ String callState = "";
 String weatherTemp = "";
 String weatherDesc = "";
 String weatherCity = "";
+
+String wifiSsid = "";
+String wifiState = "";
+int wifiSignal = -1;
+
+String storageFree = "";
+String storageTotal = "";
+int storageUsedPercent = -1;
+
+String memoryFree = "";
+String memoryTotal = "";
+int memoryUsedPercent = -1;
+
+String alarmTime = "";
+String alarmLabel = "";
+
+String systemModel = "";
+String systemUptime = "";
+String systemAndroid = "";
 
 bool lastButtonReading = HIGH;
 bool buttonPressed = false;
@@ -151,6 +175,11 @@ void drawNotification();
 void drawCall();
 void drawBattery();
 void drawWeather();
+void drawWifi();
+void drawStorage();
+void drawMemory();
+void drawAlarm();
+void drawSystem();
 void drawFirmwareUpdate();
 void drawBatteryIcon(int x, int y, int percent, bool charging);
 void drawProgressBar(int x, int y, int w, int h, int percent);
@@ -470,6 +499,30 @@ void processJsonLine(const String &line) {
     weatherDesc = field(doc, "desc", "");
     weatherCity = field(doc, "city", "");
     setScreen(SCREEN_WEATHER, timeoutMs);
+  } else if (type == "wifi") {
+    wifiSsid = field(doc, "ssid", "Offline");
+    wifiState = field(doc, "state", "");
+    wifiSignal = doc.containsKey("signal") ? constrain(doc["signal"].as<int>(), 0, 100) : -1;
+    setScreen(SCREEN_WIFI, timeoutMs);
+  } else if (type == "storage") {
+    storageFree = field(doc, "free", "--");
+    storageTotal = field(doc, "total", "");
+    storageUsedPercent = doc.containsKey("usedPercent") ? constrain(doc["usedPercent"].as<int>(), 0, 100) : -1;
+    setScreen(SCREEN_STORAGE, timeoutMs);
+  } else if (type == "memory") {
+    memoryFree = field(doc, "free", "--");
+    memoryTotal = field(doc, "total", "");
+    memoryUsedPercent = doc.containsKey("usedPercent") ? constrain(doc["usedPercent"].as<int>(), 0, 100) : -1;
+    setScreen(SCREEN_MEMORY, timeoutMs);
+  } else if (type == "alarm") {
+    alarmTime = field(doc, "time", "--:--");
+    alarmLabel = field(doc, "label", "Brak alarmu");
+    setScreen(SCREEN_ALARM, timeoutMs);
+  } else if (type == "system") {
+    systemModel = field(doc, "model", "Android");
+    systemUptime = field(doc, "uptime", "--");
+    systemAndroid = field(doc, "android", "");
+    setScreen(SCREEN_SYSTEM, timeoutMs);
   } else if (type == "home" || type == "time") {
     setScreen(SCREEN_HOME, timeoutMs);
   } else {
@@ -802,7 +855,7 @@ Screen defaultScreen() {
 
 void cycleScreen() {
   int next = static_cast<int>(currentScreen) + 1;
-  if (next > static_cast<int>(SCREEN_WEATHER)) {
+  if (next > static_cast<int>(SCREEN_SYSTEM)) {
     next = static_cast<int>(SCREEN_HOME);
   }
   setScreen(static_cast<Screen>(next));
@@ -878,6 +931,11 @@ void draw() {
       case SCREEN_CALL: drawCall(); break;
       case SCREEN_BATTERY: drawBattery(); break;
       case SCREEN_WEATHER: drawWeather(); break;
+      case SCREEN_WIFI: drawWifi(); break;
+      case SCREEN_STORAGE: drawStorage(); break;
+      case SCREEN_MEMORY: drawMemory(); break;
+      case SCREEN_ALARM: drawAlarm(); break;
+      case SCREEN_SYSTEM: drawSystem(); break;
     }
   }
 
@@ -1079,6 +1137,71 @@ void drawWeather() {
   printFit(weatherDesc, 15);
   display.setCursor(42, 45);
   printFit(weatherCity, 15);
+}
+
+void drawWifi() {
+  drawHeader("WiFi");
+
+  display.setCursor(4, 16);
+  printFit(wifiSsid.length() ? wifiSsid : "Offline", 21);
+
+  int signal = wifiSignal >= 0 ? wifiSignal : 0;
+  drawProgressBar(8, 31, 112, 8, signal);
+
+  display.setCursor(8, 47);
+  if (wifiSignal >= 0) {
+    display.print(signal);
+    display.print("% ");
+  }
+  printFit(wifiState.length() ? wifiState : "brak danych", 15);
+}
+
+void drawStorage() {
+  drawHeader("Pamiec plikow");
+
+  display.setCursor(4, 17);
+  display.print("Wolne:");
+  display.setTextSize(2);
+  display.setCursor(42, 25);
+  printFit(storageFree.length() ? storageFree : "--", 8);
+  display.setTextSize(1);
+
+  int used = storageUsedPercent >= 0 ? storageUsedPercent : 0;
+  drawProgressBar(8, 47, 112, 7, used);
+}
+
+void drawMemory() {
+  drawHeader("RAM");
+
+  display.setCursor(4, 17);
+  display.print("Wolne RAM:");
+  display.setTextSize(2);
+  display.setCursor(42, 25);
+  printFit(memoryFree.length() ? memoryFree : "--", 8);
+  display.setTextSize(1);
+
+  int used = memoryUsedPercent >= 0 ? memoryUsedPercent : 0;
+  drawProgressBar(8, 47, 112, 7, used);
+}
+
+void drawAlarm() {
+  drawHeader("Alarm");
+
+  display.setTextSize(2);
+  drawCenteredText(alarmTime.length() ? alarmTime : "--:--", 26, 2, 6);
+  display.setTextSize(1);
+  drawCenteredText(alarmLabel.length() ? alarmLabel : "Brak alarmu", 48, 1, 21);
+}
+
+void drawSystem() {
+  drawHeader("Telefon");
+
+  display.setCursor(4, 16);
+  printFit(systemModel.length() ? systemModel : "Android", 21);
+  display.setTextSize(2);
+  drawCenteredText(systemUptime.length() ? systemUptime : "--", 30, 2, 10);
+  display.setTextSize(1);
+  drawCenteredText(systemAndroid.length() ? systemAndroid : "", 51, 1, 21);
 }
 
 void drawFirmwareUpdate() {

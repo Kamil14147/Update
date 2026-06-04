@@ -61,12 +61,14 @@ pelnych MediaSession z aktywnych aplikacji.
 
 Aplikacja nazywa sie `KESP32` i ma minimalistyczny UI z dolnym paskiem
 nawigacji, ikonami, animowanymi przejsciami oraz przelacznikiem jasny/ciemny.
+Zakladka `Widgety` ma tez podglad OLED 128x64 renderowany z ostatniego JSON-a
+wyslanego do ESP32.
 
 Dolny pasek:
 
 - `Status`: BLE, aktywny widget, uprawnienia i przyciski serwisowe;
 - `Widgety`: wlaczanie/wylaczanie widgetow i priorytety;
-- `Ustaw.`: motyw, autostart i tryb debug;
+- `Ustaw.`: motyw, autostart, uprawnienia, bateria i tryb debug;
 - `Update`: firmware ESP32 oraz aktualizacja samej aplikacji;
 - `Logi`: ostatni JSON i ostatnie zdarzenia.
 
@@ -75,6 +77,9 @@ obecna wersja, nowa wersja, changelog, rozmiar pliku i przyciskiem `Aktualizuj`.
 Po starcie aktualizacji przyciski `Pozniej` i `Aktualizuj` znikaja; zostaje
 `Anuluj`, pasek postepu i przewidywany czas.
 Model 3D jest wbudowany w APK jako `app/src/main/assets/esp32.stl`.
+
+Obslugiwane widgety: polaczenie, nawigacja, powiadomienia, muzyka, bateria,
+pogoda, WiFi, pamiec plikow, RAM, alarm, status telefonu i ekran glowny.
 
 ## OTA przez BLE
 
@@ -90,8 +95,8 @@ Manifest musi wskazywac gotowy `.bin`:
 {
   "device": "kejmil-oled-esp32",
   "name": "Kejmil OLED",
-  "version": "1.0.2",
-  "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.2.bin",
+  "version": "1.0.3",
+  "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.3.bin",
   "changelog": "Opis zmian",
   "sizeBytes": 123456,
   "sha256": "64 znaki SHA-256",
@@ -134,9 +139,9 @@ Manifest aplikacji:
 {
   "packageName": "pl.kejmil.oledsender",
   "name": "KESP32",
-  "versionName": "1.2",
-  "versionCode": 3,
-  "apkUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/releases/KESP32-1.2.apk",
+  "versionName": "1.3",
+  "versionCode": 4,
+  "apkUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/releases/KESP32-1.3.apk",
   "changelog": "Opis zmian",
   "sizeBytes": 1234567,
   "sha256": "64 znaki SHA-256",
@@ -176,8 +181,8 @@ Workflow akceptuje tez stare sekrety `KEPS32V1_*`, jesli juz byly ustawione.
 4. Przy nowej wersji aplikacji zwieksz w `android-app/app/build.gradle`:
 
 ```gradle
-versionCode 3
-versionName "1.2"
+versionCode 4
+versionName "1.3"
 ```
 
 5. Uruchom workflow `Build Android app`. Jesli sekrety podpisu sa ustawione,
@@ -205,7 +210,7 @@ https://raw.githubusercontent.com/<user>/<repo>/<branch>/firmware/latest.json
 3. Przy nowej wersji zmien w `esp32/KejmilOLED/KejmilOLED.ino`:
 
 ```cpp
-static const char *FW_VERSION = "1.0.2";
+static const char *FW_VERSION = "1.0.3";
 ```
 
 4. Scommituj i wypchnij zmiany na GitHuba.
@@ -215,8 +220,8 @@ static const char *FW_VERSION = "1.0.2";
 6. Aplikacja porowna wersje odczytana z ESP32 z `version` w manifiescie.
    Popup pojawi sie tylko wtedy, gdy wersja z GitHuba jest nowsza.
 
-Do lokalnego testu po wgraniu ESP32 `1.0.1` zbuduj na GitHubie np. `1.0.2`.
-Wtedy telefon odczyta z ESP32 `1.0.1`, pobierze manifest `1.0.2` i pokaze
+Do lokalnego testu po wgraniu ESP32 `1.0.2` zbuduj na GitHubie np. `1.0.3`.
+Wtedy telefon odczyta z ESP32 `1.0.2`, pobierze manifest `1.0.3` i pokaze
 okno aktualizacji z modelem 3D.
 
 ## Typowe problemy

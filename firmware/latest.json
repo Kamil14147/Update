@@ -1,12 +1,12 @@
 {
   "device": "kejmil-oled-esp32",
   "name": "Kejmil OLED",
-  "version": "1.0.2",
-  "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.2.bin",
-  "changelog": "Fix firmware version checks and improve BLE connection stability",
-  "sizeBytes": 1177648,
-  "sha256": "435b3472407edb45a02193c46e44f2533f9032bc3d0aad919ecdc7748afedfb5",
+  "version": "1.0.3",
+  "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.3.bin",
+  "changelog": "Add more widget screens and timeout-based return to the home clock",
+  "sizeBytes": 1181456,
+  "sha256": "3f4153a949a978f504bbc16ebb12ad3643214aec6edf536f329b9fc713949509",
   "required": false,
   "protocol": "ble-ota-v1",
-  "builtAt": "2026-06-04T20:13:14.573438+00:00"
+  "builtAt": "2026-06-04T22:46:15.362897+00:00"
 }

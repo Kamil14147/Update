@@ -40,6 +40,7 @@ class MainActivity : Activity() {
     private lateinit var settings: SettingsStore
     private lateinit var appUpdater: AppUpdater
     private lateinit var palette: UiPalette
+    private lateinit var rootView: LinearLayout
     private lateinit var tabContent: FrameLayout
     private lateinit var bottomNav: LinearLayout
     private lateinit var permissionView: TextView
@@ -48,6 +49,7 @@ class MainActivity : Activity() {
     private lateinit var lastJsonView: TextView
     private lateinit var logView: TextView
     private lateinit var debugContainer: LinearLayout
+    private lateinit var oledPreviewView: OledPreviewView
     private lateinit var firmwareManifestInput: EditText
     private lateinit var firmwareEspVersionView: TextView
     private lateinit var firmwareLatestVersionView: TextView
@@ -98,6 +100,7 @@ class MainActivity : Activity() {
     private var updateDialogEtaView: TextView? = null
     private var updateDialogActionArea: LinearLayout? = null
     private var activeUpdateKind: UpdateKind? = null
+    private var updateDialogKind: UpdateKind? = null
     private var firmwareProgressStartedAt = 0L
     private var appProgressStartedAt = 0L
 
@@ -107,7 +110,10 @@ class MainActivity : Activity() {
                 is AppBus.Message.Status -> {
                     message.bleStatus?.let { bleStatusView.text = "BLE: $it" }
                     message.activeWidget?.let { activeWidgetView.text = "Aktywny widget: $it" }
-                    message.lastJson?.let { lastJsonView.text = "Ostatni JSON:\n$it" }
+                    message.lastJson?.let {
+                        lastJsonView.text = "Ostatni JSON:\n$it"
+                        oledPreviewView.setJson(it)
+                    }
                 }
                 is AppBus.Message.FirmwareStatus -> updateFirmwareStatus(message)
                 is AppBus.Message.AppUpdateStatus -> updateAppStatus(message)
@@ -176,7 +182,9 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(palette.background)
             setPadding(dp(18), dp(16), dp(18), 0)
+            alpha = 0f
         }
+        rootView = root
 
         root.addView(hero(), matchWidth())
 
@@ -207,6 +215,7 @@ class MainActivity : Activity() {
         bottomNav = bottomNavigation()
         root.addView(bottomNav, matchWidth().apply { bottomMargin = dp(10) })
         setContentView(root)
+        root.animate().alpha(1f).setDuration(180L).start()
 
         addTabView(AppTab.STATUS, statusTab())
         addTabView(AppTab.WIDGETS, widgetsTab())
@@ -394,15 +403,6 @@ class MainActivity : Activity() {
         actionButton(actionPanel, R.drawable.ic_action_reconnect, "Polacz ponownie") {
             AppBus.publish(AppBus.Message.Reconnect)
         }
-        actionButton(actionPanel, R.drawable.ic_action_bell, "Dostep do powiadomien") {
-            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-        }
-        actionButton(actionPanel, R.drawable.ic_action_permission, "Nie usypiaj") {
-            requestIgnoreBatteryOptimization()
-        }
-        actionButton(actionPanel, R.drawable.ic_action_permission, "Uprawnienia") {
-            requestRuntimePermissions()
-        }
         actionButton(actionPanel, R.drawable.ic_action_service, "Wylacz usluge") {
             KejmilForegroundService.stop(this)
         }
@@ -421,6 +421,14 @@ class MainActivity : Activity() {
 
     private fun widgetsTab(): LinearLayout {
         val root = tabRoot()
+        val previewPanel = panel()
+        previewPanel.addView(sectionTitle("Podglad OLED"))
+        oledPreviewView = OledPreviewView(this)
+        previewPanel.addView(oledPreviewView, matchWidth().apply {
+            topMargin = dp(6)
+        })
+        root.addView(previewPanel, matchWidth())
+
         val widgetPanel = panel()
         widgetPanel.addView(sectionTitle("Widgety"))
         WidgetType.uiOrder.forEach { type ->
@@ -429,7 +437,7 @@ class MainActivity : Activity() {
         actionButton(widgetPanel, R.drawable.ic_action_save, "Zapisz priorytety") {
             savePriorities()
         }
-        root.addView(widgetPanel, matchWidth())
+        root.addView(widgetPanel, spaced())
         return root
     }
 
@@ -441,8 +449,7 @@ class MainActivity : Activity() {
         val darkTheme = themedCheckBox("Ciemny motyw").apply {
             isChecked = settings.darkThemeEnabled
             setOnCheckedChangeListener { _, checked ->
-                settings.darkThemeEnabled = checked
-                recreate()
+                animateThemeChange(checked)
             }
         }
         settingsPanel.addView(darkTheme, matchWidth())
@@ -461,6 +468,16 @@ class MainActivity : Activity() {
             }
         }
         settingsPanel.addView(debugSwitch, matchWidth())
+
+        actionButton(settingsPanel, R.drawable.ic_action_bell, "Dostep do powiadomien") {
+            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
+        actionButton(settingsPanel, R.drawable.ic_action_permission, "Nie usypiaj") {
+            requestIgnoreBatteryOptimization()
+        }
+        actionButton(settingsPanel, R.drawable.ic_action_permission, "Uprawnienia") {
+            requestRuntimePermissions()
+        }
 
         debugContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -630,6 +647,49 @@ class MainActivity : Activity() {
                     .toString()
             )
         }
+        actionButton(root, R.drawable.ic_tab_status, "WiFi test") {
+            sendDebugJson(
+                JSONObject()
+                    .put("type", "wifi")
+                    .put("ssid", "KESP32_NET")
+                    .put("signal", 82)
+                    .put("state", "polaczone")
+                    .put("timeout", 6000)
+                    .toString()
+            )
+        }
+        actionButton(root, R.drawable.ic_tab_status, "RAM test") {
+            sendDebugJson(
+                JSONObject()
+                    .put("type", "memory")
+                    .put("free", "3.2 GB")
+                    .put("total", "7.6 GB")
+                    .put("usedPercent", 58)
+                    .put("timeout", 6000)
+                    .toString()
+            )
+        }
+        actionButton(root, R.drawable.ic_tab_status, "Alarm test") {
+            sendDebugJson(
+                JSONObject()
+                    .put("type", "alarm")
+                    .put("time", "06:30")
+                    .put("label", "Pobudka")
+                    .put("timeout", 6000)
+                    .toString()
+            )
+        }
+        actionButton(root, R.drawable.ic_action_app, "Telefon test") {
+            sendDebugJson(
+                JSONObject()
+                    .put("type", "system")
+                    .put("model", "Android")
+                    .put("uptime", "4h 12m")
+                    .put("android", "Android")
+                    .put("timeout", 6000)
+                    .toString()
+            )
+        }
     }
 
     private fun sendDebugJson(json: String) {
@@ -637,6 +697,7 @@ class MainActivity : Activity() {
             Toast.makeText(this, "Najpierw wlacz tryb debug", Toast.LENGTH_SHORT).show()
             return
         }
+        oledPreviewView.setJson(json)
         AppBus.publish(AppBus.Message.DebugJson(json))
     }
 
@@ -692,6 +753,9 @@ class MainActivity : Activity() {
         updateDialogStatusView?.text = firmwareStatusText
         if (firmwareStatusText.startsWith("Blad", ignoreCase = true)) {
             updateDialogInstallButton?.isEnabled = true
+        }
+        if (shouldDismissFirmwareDialog(status)) {
+            dismissUpdateDialog(UpdateKind.FIRMWARE)
         }
         maybeShowFirmwareUpdateDialog()
     }
@@ -779,9 +843,10 @@ class MainActivity : Activity() {
     }
 
     private fun showFirmwareUpdateDialog() {
-        val modelView = Esp32ModelView(this)
+        val modelView = Esp32ModelView(this, palette.surface)
         val content = dialogShell("Nowy firmware ESP32")
         activeUpdateKind = null
+        updateDialogKind = UpdateKind.FIRMWARE
         content.addView(modelView, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             dp(238)
@@ -829,6 +894,7 @@ class MainActivity : Activity() {
     private fun showAppUpdateDialog() {
         val content = dialogShell("Nowa wersja KESP32")
         activeUpdateKind = null
+        updateDialogKind = UpdateKind.APP
         val appIcon = ImageView(this).apply {
             setImageResource(R.drawable.ic_action_app)
             setColorFilter(Color.WHITE)
@@ -944,9 +1010,45 @@ class MainActivity : Activity() {
                 updateDialogInstallButton = null
                 updateDialogEtaView = null
                 activeUpdateKind = null
+                updateDialogKind = null
             }
         }
         dialog.show()
+    }
+
+    private fun shouldDismissFirmwareDialog(status: AppBus.Message.FirmwareStatus): Boolean {
+        if (updateDialogKind != UpdateKind.FIRMWARE || updateDialog?.isShowing != true) {
+            return false
+        }
+        val finished = status.status?.startsWith("Update OK", ignoreCase = true) == true
+        val noLongerAvailable = status.updateAvailable == false
+        val currentVersion = currentEsp32Version
+        val latestVersion = latestFirmwareVersion
+        val alreadyCurrent = currentVersion != null &&
+            latestVersion != null &&
+            compareVersions(currentVersion, latestVersion) >= 0
+        return finished || noLongerAvailable || alreadyCurrent
+    }
+
+    private fun dismissUpdateDialog(kind: UpdateKind) {
+        if (updateDialogKind == kind) {
+            updateDialog?.dismiss()
+        }
+    }
+
+    private fun animateThemeChange(dark: Boolean) {
+        if (settings.darkThemeEnabled == dark) {
+            return
+        }
+        rootView.animate()
+            .alpha(0f)
+            .setDuration(140L)
+            .withEndAction {
+                settings.darkThemeEnabled = dark
+                recreate()
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            }
+            .start()
     }
 
     private fun requestIgnoreBatteryOptimization() {
@@ -1140,8 +1242,34 @@ class MainActivity : Activity() {
             WidgetType.MUSIC -> "Muzyka"
             WidgetType.BATTERY -> "Bateria"
             WidgetType.WEATHER -> "Pogoda"
+            WidgetType.WIFI -> "WiFi"
+            WidgetType.STORAGE -> "Pamiec plikow"
+            WidgetType.MEMORY -> "RAM"
+            WidgetType.ALARM -> "Alarm"
+            WidgetType.SYSTEM -> "Telefon"
             WidgetType.HOME -> "Ekran glowny"
         }
+    }
+
+    private fun compareVersions(left: String, right: String): Int {
+        val leftParts = versionParts(left)
+        val rightParts = versionParts(right)
+        val count = maxOf(leftParts.size, rightParts.size)
+        for (index in 0 until count) {
+            val l = leftParts.getOrElse(index) { 0 }
+            val r = rightParts.getOrElse(index) { 0 }
+            if (l != r) return l.compareTo(r)
+        }
+        return 0
+    }
+
+    private fun versionParts(version: String): List<Int> {
+        return version.trim()
+            .removePrefix("v")
+            .removePrefix("V")
+            .split('.', '-', '_', '+')
+            .map { part -> part.takeWhile { it.isDigit() }.toIntOrNull() ?: 0 }
+            .ifEmpty { listOf(0) }
     }
 
     private fun formatBytes(bytes: Long): String {

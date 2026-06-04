@@ -1,13 +1,13 @@
 {
   "packageName": "pl.kejmil.oledsender",
   "name": "KESP32",
-  "versionName": "1.2",
-  "versionCode": 3,
-  "apkUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/releases/KESP32-1.2.apk",
-  "changelog": "Fix firmware version checks, stabilize BLE reconnects, and prepare ESP32 firmware 1.0.2",
-  "sizeBytes": 1080671,
-  "sha256": "ab92696d367bf74dc0899718869dc6efebc590cc7016a06f3aef2f4a788d8a60",
+  "versionName": "1.3",
+  "versionCode": 4,
+  "apkUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/releases/KESP32-1.3.apk",
+  "changelog": "Auto-close completed firmware update dialogs, themed ESP32 model, OLED preview, more widgets, smoother theme switching, and widget timeout fixes",
+  "sizeBytes": 1225681,
+  "sha256": "7d699f25ed3a976059f4c48cc7e1a50282a1beb6be9ee699db70f96fe6dd3887",
   "required": false,
   "protocol": "android-apk-v1",
-  "builtAt": "2026-06-04T20:09:49.409927+00:00"
+  "builtAt": "2026-06-04T22:47:07.569720+00:00"
 }

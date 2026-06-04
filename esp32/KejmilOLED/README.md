@@ -38,7 +38,7 @@ Wybierz typ plytki np. `ESP32 Dev Module`.
 Wersja jest w pliku `.ino`:
 
 ```cpp
-static const char *FW_VERSION = "1.0.2";
+static const char *FW_VERSION = "1.0.3";
 ```
 
 Aplikacja Android odczytuje ja przez BLE i porownuje z manifestem GitHuba.
@@ -63,6 +63,11 @@ Kazdy JSON konczy sie `\n`. ESP32 obsluguje:
 {"type":"call","name":"Mama","number":"+48123123123","state":"incoming"}
 {"type":"battery","percent":18,"charging":false}
 {"type":"weather","temp":"21 C","desc":"deszcz","city":"Krakow"}
+{"type":"wifi","ssid":"Dom","signal":82,"state":"polaczone","timeout":6000}
+{"type":"storage","free":"42.1 GB","total":"128 GB","usedPercent":67,"timeout":6000}
+{"type":"memory","free":"3.2 GB","total":"8 GB","usedPercent":60,"timeout":6000}
+{"type":"alarm","time":"06:30","label":"Pobudka","timeout":6000}
+{"type":"system","model":"Android","uptime":"4h 12m","android":"Android 15","timeout":6000}
 ```
 
 ESP32 nie wybiera priorytetow. Priorytety liczy aplikacja Android i wysyla juz
@@ -83,7 +88,7 @@ Protokol:
 1. Android wysyla na control:
 
 ```json
-{"cmd":"begin","device":"kejmil-oled-esp32","version":"1.0.2","size":123456,"sha256":"..."}
+{"cmd":"begin","device":"kejmil-oled-esp32","version":"1.0.3","size":123456,"sha256":"..."}
 ```
 
 2. ESP32 sprawdza urzadzenie, rozmiar i miejsce OTA, uruchamia `Update.begin`

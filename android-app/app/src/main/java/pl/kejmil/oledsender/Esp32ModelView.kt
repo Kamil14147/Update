@@ -1,6 +1,7 @@
 package pl.kejmil.oledsender
 
 import android.content.Context
+import android.graphics.Color
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
@@ -13,16 +14,18 @@ import javax.microedition.khronos.opengles.GL10
 import kotlin.math.max
 import kotlin.math.sqrt
 
-class Esp32ModelView(context: Context) : GLSurfaceView(context) {
+class Esp32ModelView(context: Context, backgroundColor: Int) : GLSurfaceView(context) {
+    private val renderer = Esp32ModelRenderer(context.applicationContext, backgroundColor)
+
     init {
         setEGLContextClientVersion(2)
         preserveEGLContextOnPause = true
-        setRenderer(Esp32ModelRenderer(context.applicationContext))
+        setRenderer(renderer)
         renderMode = RENDERMODE_CONTINUOUSLY
     }
 }
 
-private class Esp32ModelRenderer(context: Context) : GLSurfaceView.Renderer {
+private class Esp32ModelRenderer(context: Context, private val backgroundColor: Int) : GLSurfaceView.Renderer {
     private val mesh = runCatching {
         context.assets.open("esp32.stl").use { StlMesh.load(it.readBytes()) }
     }.getOrElse {
@@ -46,7 +49,12 @@ private class Esp32ModelRenderer(context: Context) : GLSurfaceView.Renderer {
         mvpHandle = GLES20.glGetUniformLocation(program, "uMvpMatrix")
         modelHandle = GLES20.glGetUniformLocation(program, "uModelMatrix")
         colorHandle = GLES20.glGetUniformLocation(program, "uColor")
-        GLES20.glClearColor(0.04f, 0.06f, 0.08f, 1f)
+        GLES20.glClearColor(
+            Color.red(backgroundColor) / 255f,
+            Color.green(backgroundColor) / 255f,
+            Color.blue(backgroundColor) / 255f,
+            1f
+        )
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
     }
 

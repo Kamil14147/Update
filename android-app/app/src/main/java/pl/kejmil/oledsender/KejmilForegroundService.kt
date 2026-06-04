@@ -2,6 +2,8 @@ package pl.kejmil.oledsender
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.ActivityManager
+import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -18,15 +20,22 @@ import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.wifi.WifiManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.StatFs
+import android.os.SystemClock
 import android.telephony.PhoneStateListener
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -48,6 +57,9 @@ class KejmilForegroundService : Service() {
     private var lastBatteryPercent = -1
     private var lastBatteryCharging = false
     private var lastBatteryWidgetAt = 0L
+    private var lastSystemWidgetAt = 0L
+    private var systemWidgetIndex = 0
+    private val shortTimeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
 
     private var telephonyManager: TelephonyManager? = null
     private var phoneStateListener: PhoneStateListener? = null
@@ -93,6 +105,7 @@ class KejmilForegroundService : Service() {
                 refreshMediaControllers()
             }
             weatherCollector?.refreshIfNeeded()
+            refreshSystemWidgetIfNeeded(now)
             handler.postDelayed(this, SERVICE_TICK_MS)
         }
     }
@@ -505,6 +518,117 @@ class KejmilForegroundService : Service() {
         weatherCollector?.refreshIfNeeded()
     }
 
+    private fun refreshSystemWidgetIfNeeded(now: Long) {
+        if (now - lastSystemWidgetAt < SYSTEM_WIDGET_INTERVAL_MS) {
+            return
+        }
+        lastSystemWidgetAt = now
+        val event = when (systemWidgetIndex++ % 5) {
+            0 -> wifiWidget()
+            1 -> storageWidget()
+            2 -> memoryWidget()
+            3 -> alarmWidget()
+            else -> systemWidget()
+        }
+        widgetManager.submit(event)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun wifiWidget(): WidgetEvent {
+        val connectivity = getSystemService(CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val capabilities = connectivity?.getNetworkCapabilities(connectivity.activeNetwork)
+        val connected = capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        val wifi = applicationContext.getSystemService(WIFI_SERVICE) as? WifiManager
+        val info = wifi?.connectionInfo
+        val ssid = if (connected) {
+            info?.ssid?.trim('"')?.takeIf { it.isNotBlank() && it != "<unknown ssid>" } ?: "WiFi"
+        } else {
+            "Offline"
+        }
+        val signal = if (connected && info != null) {
+            WifiManager.calculateSignalLevel(info.rssi, 100).coerceIn(0, 100)
+        } else {
+            0
+        }
+        val payload = JSONObject()
+            .put("ssid", limit(ssid, 32))
+            .put("signal", signal)
+            .put("state", if (connected) "polaczone" else "brak sieci")
+        return timedWidget(WidgetType.WIFI, "system:wifi", payload)
+    }
+
+    private fun storageWidget(): WidgetEvent {
+        val stat = StatFs(filesDir.absolutePath)
+        val total = stat.totalBytes.coerceAtLeast(1L)
+        val free = stat.availableBytes.coerceAtLeast(0L)
+        val usedPercent = (((total - free).toDouble() / total.toDouble()) * 100.0).roundToInt().coerceIn(0, 100)
+        val payload = JSONObject()
+            .put("free", formatBytesShort(free))
+            .put("total", formatBytesShort(total))
+            .put("usedPercent", usedPercent)
+        return timedWidget(WidgetType.STORAGE, "system:storage", payload)
+    }
+
+    private fun memoryWidget(): WidgetEvent {
+        val manager = getSystemService(ACTIVITY_SERVICE) as? ActivityManager
+        val info = ActivityManager.MemoryInfo()
+        manager?.getMemoryInfo(info)
+        val total = info.totalMem.coerceAtLeast(1L)
+        val free = info.availMem.coerceAtLeast(0L)
+        val usedPercent = (((total - free).toDouble() / total.toDouble()) * 100.0).roundToInt().coerceIn(0, 100)
+        val payload = JSONObject()
+            .put("free", formatBytesShort(free))
+            .put("total", formatBytesShort(total))
+            .put("usedPercent", usedPercent)
+        return timedWidget(WidgetType.MEMORY, "system:memory", payload)
+    }
+
+    private fun alarmWidget(): WidgetEvent {
+        val alarm = (getSystemService(ALARM_SERVICE) as? AlarmManager)?.nextAlarmClock
+        val payload = JSONObject()
+            .put("time", alarm?.let { shortTimeFormat.format(Date(it.triggerTime)) } ?: "--:--")
+            .put("label", alarm?.showIntent?.creatorPackage?.substringAfterLast('.') ?: "Brak alarmu")
+        return timedWidget(WidgetType.ALARM, "system:alarm", payload)
+    }
+
+    private fun systemWidget(): WidgetEvent {
+        val uptimeMinutes = SystemClock.elapsedRealtime() / 60000L
+        val payload = JSONObject()
+            .put("model", limit(Build.MODEL ?: "Android", 32))
+            .put("uptime", formatUptime(uptimeMinutes))
+            .put("android", "Android ${Build.VERSION.RELEASE}")
+        return timedWidget(WidgetType.SYSTEM, "system:device", payload)
+    }
+
+    private fun timedWidget(type: WidgetType, sourceKey: String, payload: JSONObject): WidgetEvent {
+        return WidgetEvent(
+            type = type,
+            sourceKey = sourceKey,
+            priority = type.defaultPriority,
+            payload = payload,
+            timeoutMs = SYSTEM_WIDGET_DISPLAY_MS
+        )
+    }
+
+    private fun formatBytesShort(bytes: Long): String {
+        val gb = bytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
+        return if (gb >= 1.0) {
+            String.format(Locale.US, "%.1f GB", gb)
+        } else {
+            String.format(Locale.US, "%d MB", bytes / (1024L * 1024L))
+        }
+    }
+
+    private fun formatUptime(minutes: Long): String {
+        val hours = minutes / 60L
+        val rest = minutes % 60L
+        return if (hours > 0L) {
+            "${hours}h ${rest}m"
+        } else {
+            "${rest}m"
+        }
+    }
+
     private fun unregisterCallListener() {
         val manager = telephonyManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -574,6 +698,8 @@ class KejmilForegroundService : Service() {
         private const val CHANNEL_ID = "kejmil_oled_service"
         private const val LOW_BATTERY_PERCENT = 20
         private const val BATTERY_WIDGET_INTERVAL_MS = 10 * 60 * 1000L
+        private const val SYSTEM_WIDGET_INTERVAL_MS = 25 * 1000L
+        private const val SYSTEM_WIDGET_DISPLAY_MS = 6500L
         private const val MEDIA_REFRESH_MS = 60 * 1000L
         private const val SERVICE_TICK_MS = 3000L
 

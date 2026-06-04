@@ -68,7 +68,7 @@ class WeatherCollector(
                     sourceKey = "weather:open-meteo",
                     priority = WidgetType.WEATHER.defaultPriority,
                     payload = payload,
-                    timeoutMs = 15 * 60 * 1000L
+                    timeoutMs = 8000L
                 )
                 handler.post { onEvent(event) }
             } catch (error: Exception) {
