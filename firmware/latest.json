@@ -2,11 +2,11 @@
   "device": "kejmil-oled-esp32",
   "name": "Kejmil OLED",
   "version": "1.0.0",
-  "firmwareUrl": "https://raw.githubusercontent.com/krawc/kejmil-oled/main/firmware/releases/kejmil-oled-esp32-1.0.0.bin",
-  "changelog": "Local Arduino CLI build",
-  "sizeBytes": 1177888,
-  "sha256": "dfc1fa789c00c5ee9102a21b5fa0f3b7c139f8baa22df99cc17d76f449074fca",
+  "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.0.bin",
+  "changelog": "Firmware build from GitHub Actions",
+  "sizeBytes": 1177808,
+  "sha256": "437f35d39374b979c000394f3d18d8c0f30ef6cf96bd50d863e5d6a5f7c2ee67",
   "required": false,
   "protocol": "ble-ota-v1",
-  "builtAt": "2026-06-04T17:43:42.146751+00:00"
+  "builtAt": "2026-06-04T19:10:29.533322+00:00"
 }
