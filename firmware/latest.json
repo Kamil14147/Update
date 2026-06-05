@@ -3,10 +3,10 @@
   "name": "Kejmil OLED",
   "version": "1.0.4",
   "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.4.bin",
-  "changelog": "Keep music progress bar stable and improve navigation arrow fallback on OLED",
-  "sizeBytes": 1183984,
-  "sha256": "cd0f9a323f58a46a23194868223d16d88a7ae071ce603b07c0dda070e2b01c01",
+  "changelog": "Firmware build from GitHub Actions",
+  "sizeBytes": 1183920,
+  "sha256": "d6ea8fedfadb5bb8696e9a2d627f3c2e9ce9d90aa2b94e937048c589ab8555e2",
   "required": false,
   "protocol": "ble-ota-v1",
-  "builtAt": "2026-06-05T12:30:42.388171+00:00"
+  "builtAt": "2026-06-05T12:34:34.696960+00:00"
 }
