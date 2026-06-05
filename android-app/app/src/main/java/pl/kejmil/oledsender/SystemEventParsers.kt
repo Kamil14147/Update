@@ -10,9 +10,15 @@ import java.util.Locale
 object SystemEventParsers {
     private val navigationPackages = setOf(
         "com.google.android.apps.maps",
+        "com.google.android.apps.mapslite",
+        "com.google.android.projection.gearhead",
         "com.waze",
         "pl.neptis.yanosik.mobi.android",
-        "com.yanosik.android"
+        "com.yanosik.android",
+        "com.sygic.aura",
+        "com.tomtom.gplay.navapp",
+        "com.huawei.maps.app",
+        "com.mapfactor.navigator"
     )
 
     private val importantPackages = listOf(
@@ -30,10 +36,19 @@ object SystemEventParsers {
         "spotify",
         "youtube",
         "music",
+        "audio",
+        "media",
         "tidal",
         "deezer",
         "podcast",
-        "player"
+        "player",
+        "radio",
+        "soundcloud",
+        "audible",
+        "audiobook",
+        "maxmpz",
+        "vlc",
+        "foobar"
     )
 
     private val weatherPackages = listOf("weather", "pogoda", "meteo", "accuweather")
@@ -72,7 +87,7 @@ object SystemEventParsers {
             looksLikeNavigation(notification, sbn.packageName, combined) ->
                 navigationEvent(sbn, appLabel, title, body, combined)
             looksLikeMedia(notification, sbn.packageName, title, body) ->
-                mediaNotificationEvent(sbn, title, body)
+                mediaNotificationEvent(sbn, appLabel, title, body)
             looksLikeWeather(sbn.packageName, combined) ->
                 weatherEvent(sbn, appLabel, title, body, combined)
             looksImportant(notification, sbn.packageName) ->
@@ -135,10 +150,17 @@ object SystemEventParsers {
         )
     }
 
-    private fun mediaNotificationEvent(sbn: StatusBarNotification, title: String, body: String): WidgetEvent {
+    private fun mediaNotificationEvent(
+        sbn: StatusBarNotification,
+        appLabel: String,
+        title: String,
+        body: String
+    ): WidgetEvent {
+        val displayTitle = firstMeaningful(title, body, appLabel)
+        val displayArtist = if (title.isNotBlank() && body.isNotBlank()) body else appLabel
         val payload = JSONObject()
-            .put("title", limit(firstMeaningful(title, "", "Media"), 48))
-            .put("artist", limit(firstMeaningful(body, "", "Unknown"), 48))
+            .put("title", limit(displayTitle, 48))
+            .put("artist", limit(displayArtist, 48))
             .put("state", "playing")
             .put("progress", -1)
 
@@ -147,7 +169,7 @@ object SystemEventParsers {
             sourceKey = "media_notification:${sbn.packageName}",
             priority = WidgetType.MUSIC.defaultPriority,
             payload = payload,
-            timeoutMs = 8000L
+            timeoutMs = 20000L
         )
     }
 
@@ -227,7 +249,7 @@ object SystemEventParsers {
     private fun looksLikeMedia(notification: Notification, packageName: String, title: String, body: String): Boolean {
         val lowerPackage = packageName.lowercase(Locale.US)
         return notification.category == Notification.CATEGORY_TRANSPORT ||
-            (title.isNotBlank() && body.isNotBlank() && mediaPackages.any { lowerPackage.contains(it) })
+            (mediaPackages.any { lowerPackage.contains(it) } && (title.isNotBlank() || body.isNotBlank()))
     }
 
     private fun looksLikeWeather(packageName: String, combined: String): Boolean {

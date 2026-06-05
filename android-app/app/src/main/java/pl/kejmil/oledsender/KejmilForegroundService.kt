@@ -52,6 +52,7 @@ class KejmilForegroundService : Service() {
     private val mediaRegistrations = mutableListOf<ControllerRegistration>()
     private var mediaListener: MediaSessionManager.OnActiveSessionsChangedListener? = null
     private var lastMediaRefresh = 0L
+    private var lastNotificationSnapshotAt = 0L
 
     private var batteryReceiver: BroadcastReceiver? = null
     private var lastBatteryPercent = -1
@@ -103,6 +104,10 @@ class KejmilForegroundService : Service() {
             if (now - lastMediaRefresh > MEDIA_REFRESH_MS) {
                 lastMediaRefresh = now
                 refreshMediaControllers()
+            }
+            if (now - lastNotificationSnapshotAt > NOTIFICATION_SNAPSHOT_MS) {
+                lastNotificationSnapshotAt = now
+                KejmilNotificationListenerService.requestActiveSnapshot("service tick")
             }
             weatherCollector?.refreshIfNeeded()
             refreshSystemWidgetIfNeeded(now)
@@ -174,6 +179,8 @@ class KejmilForegroundService : Service() {
     private fun startCollectors() {
         registerBatteryReceiver()
         registerMediaSessionListener()
+        KejmilNotificationListenerService.requestRebind(this)
+        KejmilNotificationListenerService.requestActiveSnapshot("service start")
         registerCallListener()
         registerWeatherCollector()
     }
@@ -391,14 +398,16 @@ class KejmilForegroundService : Service() {
             val controllers = mediaSessionManager?.getActiveSessions(component).orEmpty()
             updateMediaControllers(controllers)
         } catch (_: SecurityException) {
-            AppBus.publish(AppBus.Message.ClearType(WidgetType.MUSIC))
+            AppBus.publish(AppBus.Message.ClearSource("media"))
+            KejmilNotificationListenerService.requestRebind(this)
         }
     }
 
     private fun updateMediaControllers(controllers: List<MediaController>) {
         unregisterMediaControllers()
         if (controllers.isEmpty()) {
-            AppBus.publish(AppBus.Message.ClearType(WidgetType.MUSIC))
+            AppBus.publish(AppBus.Message.ClearSource("media"))
+            KejmilNotificationListenerService.requestActiveSnapshot("media controllers empty")
             return
         }
 
@@ -445,7 +454,7 @@ class KejmilForegroundService : Service() {
             PlaybackState.STATE_PAUSED -> "paused"
             PlaybackState.STATE_STOPPED,
             PlaybackState.STATE_NONE -> {
-                AppBus.publish(AppBus.Message.ClearType(WidgetType.MUSIC))
+                AppBus.publish(AppBus.Message.ClearSource("media"))
                 return
             }
             else -> "paused"
@@ -701,6 +710,7 @@ class KejmilForegroundService : Service() {
         private const val SYSTEM_WIDGET_INTERVAL_MS = 25 * 1000L
         private const val SYSTEM_WIDGET_DISPLAY_MS = 6500L
         private const val MEDIA_REFRESH_MS = 60 * 1000L
+        private const val NOTIFICATION_SNAPSHOT_MS = 7000L
         private const val SERVICE_TICK_MS = 3000L
 
         fun start(context: Context) {

@@ -145,6 +145,9 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         updatePermissionStatus()
+        if (isNotificationListenerEnabled()) {
+            KejmilNotificationListenerService.requestRebind(this)
+        }
         AppBus.publish(AppBus.Message.RequestFirmwareVersion)
     }
 

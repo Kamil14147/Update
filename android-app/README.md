@@ -139,9 +139,9 @@ Manifest aplikacji:
 {
   "packageName": "pl.kejmil.oledsender",
   "name": "KESP32",
-  "versionName": "1.3",
-  "versionCode": 4,
-  "apkUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/releases/KESP32-1.3.apk",
+  "versionName": "1.4",
+  "versionCode": 5,
+  "apkUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/releases/KESP32-1.4.apk",
   "changelog": "Opis zmian",
   "sizeBytes": 1234567,
   "sha256": "64 znaki SHA-256",
@@ -181,8 +181,8 @@ Workflow akceptuje tez stare sekrety `KEPS32V1_*`, jesli juz byly ustawione.
 4. Przy nowej wersji aplikacji zwieksz w `android-app/app/build.gradle`:
 
 ```gradle
-versionCode 4
-versionName "1.3"
+versionCode 5
+versionName "1.4"
 ```
 
 5. Uruchom workflow `Build Android app`. Jesli sekrety podpisu sa ustawione,
