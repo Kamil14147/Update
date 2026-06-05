@@ -1,13 +1,13 @@
 {
   "packageName": "pl.kejmil.oledsender",
   "name": "KESP32",
-  "versionName": "1.4",
-  "versionCode": 5,
-  "apkUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/releases/KESP32-1.4.apk",
-  "changelog": "Fix music and navigation widget detection by rebinding Notification Listener, rescanning active notifications, and improving media/navigation parsers",
-  "sizeBytes": 1093385,
-  "sha256": "3dc7da7d3b4f3bdd3e4126925cc07bb82870a1e4283438b285a1cd1e5fdba1c0",
+  "versionName": "1.5",
+  "versionCode": 6,
+  "apkUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/releases/KESP32-1.5.apk",
+  "changelog": "Add manual media/navigation scan, active notification diagnostics, faster MediaSession refresh, and stronger listener rebinding",
+  "sizeBytes": 1232742,
+  "sha256": "065d996273bceae083019a923fd7ca0f606a19cad829f44a320bbc501013a829",
   "required": false,
   "protocol": "android-apk-v1",
-  "builtAt": "2026-06-05T11:59:18.958376+00:00"
+  "builtAt": "2026-06-05T12:12:59.373899+00:00"
 }

@@ -60,6 +60,22 @@ object SystemEventParsers {
         return "$prefix:${sbn.packageName}:${sbn.key}"
     }
 
+    fun notificationSummary(context: Context, sbn: StatusBarNotification): String {
+        val notification = sbn.notification
+            ?: return "${packageLabel(context, sbn.packageName)} (${sbn.packageName}) no notification data"
+        val title = extrasText(notification, Notification.EXTRA_TITLE)
+        val text = extrasText(notification, Notification.EXTRA_TEXT)
+        val bigText = extrasText(notification, Notification.EXTRA_BIG_TEXT)
+        val body = firstMeaningful(text, bigText, "")
+        val category = notification.category ?: "-"
+        val marker = when {
+            looksLikeNavigation(notification, sbn.packageName, listOf(title, body).joinToString(" ")) -> "nav"
+            looksLikeMedia(notification, sbn.packageName, title, body) -> "media"
+            else -> "other"
+        }
+        return "${limit(packageLabel(context, sbn.packageName), 22)} (${sbn.packageName}) cat=$category mark=$marker text=${limit(firstMeaningful(title, body, "-"), 54)}"
+    }
+
     fun parseNotification(context: Context, sbn: StatusBarNotification): WidgetEvent? {
         if (sbn.packageName == context.packageName || sbn.isClearable.not() && sbn.id == KejmilForegroundService.NOTIFICATION_ID) {
             return null

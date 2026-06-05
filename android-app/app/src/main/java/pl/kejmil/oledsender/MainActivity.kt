@@ -406,6 +406,10 @@ class MainActivity : Activity() {
         actionButton(actionPanel, R.drawable.ic_action_reconnect, "Polacz ponownie") {
             AppBus.publish(AppBus.Message.Reconnect)
         }
+        actionButton(actionPanel, R.drawable.ic_action_check, "Skanuj media/nav") {
+            KejmilForegroundService.scanNotificationSources(this)
+            updatePermissionStatus()
+        }
         actionButton(actionPanel, R.drawable.ic_action_service, "Wylacz usluge") {
             KejmilForegroundService.stop(this)
         }
@@ -474,6 +478,10 @@ class MainActivity : Activity() {
 
         actionButton(settingsPanel, R.drawable.ic_action_bell, "Dostep do powiadomien") {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
+        actionButton(settingsPanel, R.drawable.ic_action_check, "Skanuj media/nav") {
+            KejmilForegroundService.scanNotificationSources(this)
+            updatePermissionStatus()
         }
         actionButton(settingsPanel, R.drawable.ic_action_permission, "Nie usypiaj") {
             requestIgnoreBatteryOptimization()
@@ -1072,12 +1080,14 @@ class MainActivity : Activity() {
             checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
         }
         val notificationAccess = isNotificationListenerEnabled()
+        val listenerConnected = KejmilNotificationListenerService.isConnected()
         val batteryIgnored = (getSystemService(Context.POWER_SERVICE) as PowerManager)
             .isIgnoringBatteryOptimizations(packageName)
 
         permissionView.text = buildString {
             appendLine("Uprawnienia: ${if (missing.isEmpty()) "OK" else "brakuje ${missing.size}"}")
             appendLine("Dostep do powiadomien: ${if (notificationAccess) "OK" else "brak"}")
+            appendLine("Listener: ${if (listenerConnected) "aktywny" else if (notificationAccess) "czeka na rebind" else "brak dostepu"}")
             append("Bateria: ${if (batteryIgnored) "nie usypiaj" else "domyslnie"}")
         }
     }

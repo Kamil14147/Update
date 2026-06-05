@@ -45,6 +45,7 @@ object AppBus {
         data object CheckAppUpdates : Message()
         data object InstallAppUpdate : Message()
         data object CancelAppUpdate : Message()
+        data object RefreshNotificationSources : Message()
         data class DebugJson(val json: String) : Message()
     }
 

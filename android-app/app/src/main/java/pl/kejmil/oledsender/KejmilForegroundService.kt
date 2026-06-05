@@ -79,6 +79,7 @@ class KejmilForegroundService : Service() {
                 firmwareUpdater.cancelInstall()
                 bleClient.abortFirmwareUpdate()
             }
+            is AppBus.Message.RefreshNotificationSources -> refreshNotificationAndMedia("manual scan")
             is AppBus.Message.DebugJson -> {
                 if (settings.debugModeEnabled) {
                     bleClient.send(message.json)
@@ -107,6 +108,9 @@ class KejmilForegroundService : Service() {
             }
             if (now - lastNotificationSnapshotAt > NOTIFICATION_SNAPSHOT_MS) {
                 lastNotificationSnapshotAt = now
+                if (!KejmilNotificationListenerService.isConnected()) {
+                    KejmilNotificationListenerService.requestRebind(this@KejmilForegroundService)
+                }
                 KejmilNotificationListenerService.requestActiveSnapshot("service tick")
             }
             weatherCollector?.refreshIfNeeded()
@@ -156,6 +160,7 @@ class KejmilForegroundService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_RECONNECT -> bleClient.reconnectNow()
+            ACTION_SCAN_SOURCES -> refreshNotificationAndMedia("manual scan")
             ACTION_DEBUG_JSON -> {
                 intent.getStringExtra(EXTRA_JSON)?.let { json ->
                     if (settings.debugModeEnabled) bleClient.send(json)
@@ -179,8 +184,7 @@ class KejmilForegroundService : Service() {
     private fun startCollectors() {
         registerBatteryReceiver()
         registerMediaSessionListener()
-        KejmilNotificationListenerService.requestRebind(this)
-        KejmilNotificationListenerService.requestActiveSnapshot("service start")
+        refreshNotificationAndMedia("service start")
         registerCallListener()
         registerWeatherCollector()
     }
@@ -211,6 +215,15 @@ class KejmilForegroundService : Service() {
 
     private fun log(text: String) {
         AppBus.publish(AppBus.Message.Log(text))
+    }
+
+    private fun refreshNotificationAndMedia(reason: String) {
+        KejmilNotificationListenerService.requestRebind(this)
+        KejmilNotificationListenerService.requestActiveSnapshot(reason)
+        refreshMediaControllers()
+        if (reason == "manual scan") {
+            log("Media/navigation scan requested")
+        }
     }
 
     private fun handleFirmwareMessage(line: String) {
@@ -701,6 +714,7 @@ class KejmilForegroundService : Service() {
         const val ACTION_START = "pl.kejmil.oledsender.START"
         const val ACTION_STOP = "pl.kejmil.oledsender.STOP"
         const val ACTION_RECONNECT = "pl.kejmil.oledsender.RECONNECT"
+        const val ACTION_SCAN_SOURCES = "pl.kejmil.oledsender.SCAN_SOURCES"
         const val ACTION_DEBUG_JSON = "pl.kejmil.oledsender.DEBUG_JSON"
         const val EXTRA_JSON = "json"
 
@@ -709,7 +723,7 @@ class KejmilForegroundService : Service() {
         private const val BATTERY_WIDGET_INTERVAL_MS = 10 * 60 * 1000L
         private const val SYSTEM_WIDGET_INTERVAL_MS = 25 * 1000L
         private const val SYSTEM_WIDGET_DISPLAY_MS = 6500L
-        private const val MEDIA_REFRESH_MS = 60 * 1000L
+        private const val MEDIA_REFRESH_MS = 5 * 1000L
         private const val NOTIFICATION_SNAPSHOT_MS = 7000L
         private const val SERVICE_TICK_MS = 3000L
 
@@ -724,6 +738,15 @@ class KejmilForegroundService : Service() {
 
         fun stop(context: Context) {
             context.startService(Intent(context, KejmilForegroundService::class.java).setAction(ACTION_STOP))
+        }
+
+        fun scanNotificationSources(context: Context) {
+            val intent = Intent(context, KejmilForegroundService::class.java).setAction(ACTION_SCAN_SOURCES)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
         }
     }
 }

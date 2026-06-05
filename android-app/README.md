@@ -139,9 +139,9 @@ Manifest aplikacji:
 {
   "packageName": "pl.kejmil.oledsender",
   "name": "KESP32",
-  "versionName": "1.4",
-  "versionCode": 5,
-  "apkUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/releases/KESP32-1.4.apk",
+  "versionName": "1.5",
+  "versionCode": 6,
+  "apkUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/releases/KESP32-1.5.apk",
   "changelog": "Opis zmian",
   "sizeBytes": 1234567,
   "sha256": "64 znaki SHA-256",
@@ -181,8 +181,8 @@ Workflow akceptuje tez stare sekrety `KEPS32V1_*`, jesli juz byly ustawione.
 4. Przy nowej wersji aplikacji zwieksz w `android-app/app/build.gradle`:
 
 ```gradle
-versionCode 5
-versionName "1.4"
+versionCode 6
+versionName "1.5"
 ```
 
 5. Uruchom workflow `Build Android app`. Jesli sekrety podpisu sa ustawione,
@@ -227,9 +227,12 @@ okno aktualizacji z modelem 3D.
 ## Typowe problemy
 
 - Brak BLE: wlacz Bluetooth i sprawdz, czy ESP32 reklamuje `Kejmil OLED`.
-- Brak nawigacji/powiadomien: wlacz dostep do powiadomien dla aplikacji.
+- Brak nawigacji/powiadomien: wlacz dostep do powiadomien dla aplikacji,
+  potem kliknij `Skanuj media/nav` i sprawdz w `Logi`, czy Android pokazuje
+  aktywne powiadomienia z map.
 - Muzyka sie nie pojawia: odtwarzacz musi wystawiac MediaSession lub
-  powiadomienie transportowe.
+  powiadomienie transportowe. Kliknij `Skanuj media/nav`; w `Logi` powinno
+  pojawic sie `mark=media` przy aktywnym odtwarzaczu.
 - Numer telefonu niedostepny: Android lub operator moze go blokowac mimo zgody.
 - Pogoda brak: telefon nie ma ostatniej znanej lokalizacji albo lokalizacja jest
   zablokowana.
