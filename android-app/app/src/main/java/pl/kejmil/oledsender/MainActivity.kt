@@ -45,10 +45,7 @@ class MainActivity : Activity() {
     private lateinit var bottomNav: LinearLayout
     private lateinit var permissionView: TextView
     private lateinit var bleStatusView: TextView
-    private lateinit var bleDetailStatusView: TextView
     private lateinit var activeWidgetView: TextView
-    private lateinit var lastJsonView: TextView
-    private lateinit var logView: TextView
     private lateinit var debugContainer: LinearLayout
     private lateinit var oledPreviewView: OledPreviewView
     private lateinit var firmwareManifestInput: EditText
@@ -71,10 +68,8 @@ class MainActivity : Activity() {
     private val tabIcons = linkedMapOf<AppTab, ImageView>()
     private val tabLabels = linkedMapOf<AppTab, TextView>()
     private val priorityInputs = linkedMapOf<WidgetType, EditText>()
-    private val logLines = ArrayDeque<String>()
 
     private var currentTab = AppTab.STATUS
-    private var currentBleStatusText = "czekam"
     private var firmwareStatusText = "czekam"
     private var firmwareUpdateAvailable: Boolean? = null
     private var firmwareRequired: Boolean? = null
@@ -111,16 +106,13 @@ class MainActivity : Activity() {
             when (message) {
                 is AppBus.Message.Status -> {
                     message.bleStatus?.let {
-                        currentBleStatusText = it
                         bleStatusView.text = "BLE: $it"
-                        if (::bleDetailStatusView.isInitialized) {
-                            bleDetailStatusView.text = "Status: $it"
-                        }
                     }
                     message.activeWidget?.let { activeWidgetView.text = "Aktywny widget: $it" }
                     message.lastJson?.let {
-                        lastJsonView.text = "Ostatni JSON:\n$it"
-                        oledPreviewView.setJson(it)
+                        if (::oledPreviewView.isInitialized) {
+                            oledPreviewView.setJson(it)
+                        }
                     }
                 }
                 is AppBus.Message.FirmwareStatus -> updateFirmwareStatus(message)
@@ -128,7 +120,7 @@ class MainActivity : Activity() {
                 is AppBus.Message.CheckAppUpdates -> appUpdater.checkForUpdates(automatic = false)
                 is AppBus.Message.InstallAppUpdate -> appUpdater.installLatest()
                 is AppBus.Message.CancelAppUpdate -> appUpdater.cancelInstall()
-                is AppBus.Message.Log -> appendLog(message.text)
+                is AppBus.Message.Log -> Unit
                 else -> Unit
             }
         }
@@ -230,7 +222,6 @@ class MainActivity : Activity() {
 
         addTabView(AppTab.STATUS, statusTab())
         addTabView(AppTab.WIDGETS, widgetsTab())
-        addTabView(AppTab.BLE, bleTab())
         addTabView(AppTab.SETTINGS, settingsTab())
         addTabView(AppTab.UPDATE, updateTab())
         showTab(AppTab.STATUS, animate = false)
@@ -452,40 +443,6 @@ class MainActivity : Activity() {
         return root
     }
 
-    private fun bleTab(): LinearLayout {
-        val root = tabRoot()
-
-        val blePanel = panel()
-        blePanel.addView(sectionTitle("BLE"))
-        bleDetailStatusView = sectionText("Status: $currentBleStatusText")
-        blePanel.addView(bleDetailStatusView, matchWidth())
-        actionButton(blePanel, R.drawable.ic_action_service, "Uruchom usluge") {
-            if (!hasRuntimePermissions()) requestRuntimePermissions() else KejmilForegroundService.start(this)
-        }
-        actionButton(blePanel, R.drawable.ic_action_reconnect, "Polacz ponownie") {
-            AppBus.publish(AppBus.Message.Reconnect)
-        }
-        actionButton(blePanel, R.drawable.ic_action_check, "Odczytaj wersje ESP32") {
-            AppBus.publish(AppBus.Message.RequestFirmwareVersion)
-        }
-        actionButton(blePanel, R.drawable.ic_action_service, "Wylacz usluge") {
-            KejmilForegroundService.stop(this)
-        }
-        root.addView(blePanel, matchWidth())
-
-        val diagnosticPanel = panel()
-        diagnosticPanel.addView(sectionTitle("Diagnostyka"))
-        lastJsonView = sectionText("Ostatni JSON: brak").apply {
-            setTextIsSelectable(true)
-        }
-        diagnosticPanel.addView(lastJsonView, matchWidth())
-        logView = sectionText("Zdarzenia: brak")
-        diagnosticPanel.addView(logView, matchWidth())
-        root.addView(diagnosticPanel, spaced())
-
-        return root
-    }
-
     private fun settingsTab(): LinearLayout {
         val root = tabRoot()
         val settingsPanel = panel()
@@ -541,85 +498,224 @@ class MainActivity : Activity() {
 
     private fun updateTab(): LinearLayout {
         val root = tabRoot()
-        root.addView(firmwareUpdatePanel(), matchWidth())
+        root.addView(updateSummaryPanel(), matchWidth())
+        root.addView(firmwareUpdatePanel(), spaced())
         root.addView(appUpdatePanel(), spaced())
         return root
     }
 
+    private fun updateSummaryPanel(): LinearLayout {
+        val panel = panel()
+        panel.addView(updatePanelHeader(R.drawable.ic_tab_update, "Aktualizacje", "KESP32"))
+        val actions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        actions.addView(compactActionButton(R.drawable.ic_action_check, "Sprawdz") {
+            saveFirmwareUrl(showToast = false)
+            saveAppUpdateUrl(showToast = false)
+            AppBus.publish(AppBus.Message.CheckFirmwareUpdates)
+            appUpdater.checkForUpdates(automatic = false)
+        }, LinearLayout.LayoutParams(0, dp(44), 1f))
+        actions.addView(compactActionButton(R.drawable.ic_action_reconnect, "ESP32") {
+            AppBus.publish(AppBus.Message.RequestFirmwareVersion)
+        }, LinearLayout.LayoutParams(0, dp(44), 1f).apply {
+            leftMargin = dp(8)
+        })
+        panel.addView(actions, matchWidth().apply { topMargin = dp(8) })
+        return panel
+    }
+
     private fun firmwareUpdatePanel(): LinearLayout {
         val panel = panel()
-        panel.addView(sectionTitle("ESP32 firmware"))
+        panel.addView(updatePanelHeader(R.drawable.ic_oled_logo, "ESP32 firmware", "BLE OTA"))
 
-        firmwareEspVersionView = sectionText("Obecna wersja ESP32: nie odczytano")
-        firmwareLatestVersionView = sectionText("Najnowsza wersja: nie sprawdzono")
-        firmwareFileView = sectionText("Plik firmware: brak")
-        firmwareChangelogView = sectionText("Changelog: brak")
-        firmwareStatusView = sectionText("Status: czekam")
-        panel.addView(firmwareEspVersionView, matchWidth())
-        panel.addView(firmwareLatestVersionView, matchWidth())
-        panel.addView(firmwareFileView, matchWidth())
-        panel.addView(firmwareChangelogView, matchWidth())
-        panel.addView(firmwareStatusView, matchWidth())
+        firmwareEspVersionView = updateValueText("Obecna wersja ESP32: nie odczytano")
+        firmwareLatestVersionView = updateValueText("Najnowsza wersja: nie sprawdzono")
+        firmwareFileView = updateValueText("Plik firmware: brak")
+        firmwareChangelogView = updateValueText("Changelog: brak")
+        firmwareStatusView = updateValueText("Status: czekam")
+        panel.addView(firmwareEspVersionView, matchWidth().apply { topMargin = dp(8) })
+        panel.addView(firmwareLatestVersionView, matchWidth().apply { topMargin = dp(6) })
+        panel.addView(firmwareFileView, matchWidth().apply { topMargin = dp(6) })
+        panel.addView(firmwareChangelogView, matchWidth().apply { topMargin = dp(6) })
+        panel.addView(firmwareStatusView, matchWidth().apply { topMargin = dp(6) })
 
         firmwareProgress = progressBar()
-        panel.addView(firmwareProgress, matchWidth().apply { topMargin = dp(6) })
+        panel.addView(firmwareProgress, matchWidth().apply { topMargin = dp(10) })
 
         firmwareManifestInput = themedEditText("URL manifestu firmware").apply {
             setText(settings.firmwareManifestUrl)
         }
-        panel.addView(firmwareManifestInput, matchWidth().apply { topMargin = dp(10) })
+        panel.addView(updateLabel("Manifest firmware"), matchWidth().apply { topMargin = dp(10) })
+        panel.addView(firmwareManifestInput, matchWidth().apply {
+            topMargin = dp(4)
+            height = dp(42)
+        })
 
-        actionButton(panel, R.drawable.ic_action_save, "Zapisz URL") {
-            saveFirmwareUrl()
-        }
-        actionButton(panel, R.drawable.ic_action_check, "Check ESP32") {
-            saveFirmwareUrl(showToast = false)
-            AppBus.publish(AppBus.Message.CheckFirmwareUpdates)
-        }
-        actionButton(panel, R.drawable.ic_action_install, "Aktualizuj ESP32") {
-            saveFirmwareUrl(showToast = false)
-            AppBus.publish(AppBus.Message.InstallFirmwareUpdate)
-        }
+        addUpdateActions(
+            panel = panel,
+            onSave = { saveFirmwareUrl() },
+            onCheck = {
+                saveFirmwareUrl(showToast = false)
+                AppBus.publish(AppBus.Message.CheckFirmwareUpdates)
+            },
+            onInstall = {
+                saveFirmwareUrl(showToast = false)
+                AppBus.publish(AppBus.Message.InstallFirmwareUpdate)
+            }
+        )
 
         return panel
     }
 
     private fun appUpdatePanel(): LinearLayout {
         val panel = panel()
-        panel.addView(sectionTitle("KESP32 app"))
+        panel.addView(updatePanelHeader(R.drawable.ic_action_app, "KESP32 app", "APK"))
 
-        appCurrentVersionView = sectionText("Obecna wersja: nie odczytano")
-        appLatestVersionView = sectionText("Najnowsza wersja: nie sprawdzono")
-        appFileView = sectionText("Plik APK: brak")
-        appChangelogView = sectionText("Changelog: brak")
-        appStatusView = sectionText("Status: czekam")
-        panel.addView(appCurrentVersionView, matchWidth())
-        panel.addView(appLatestVersionView, matchWidth())
-        panel.addView(appFileView, matchWidth())
-        panel.addView(appChangelogView, matchWidth())
-        panel.addView(appStatusView, matchWidth())
+        appCurrentVersionView = updateValueText("Obecna wersja: nie odczytano")
+        appLatestVersionView = updateValueText("Najnowsza wersja: nie sprawdzono")
+        appFileView = updateValueText("Plik APK: brak")
+        appChangelogView = updateValueText("Changelog: brak")
+        appStatusView = updateValueText("Status: czekam")
+        panel.addView(appCurrentVersionView, matchWidth().apply { topMargin = dp(8) })
+        panel.addView(appLatestVersionView, matchWidth().apply { topMargin = dp(6) })
+        panel.addView(appFileView, matchWidth().apply { topMargin = dp(6) })
+        panel.addView(appChangelogView, matchWidth().apply { topMargin = dp(6) })
+        panel.addView(appStatusView, matchWidth().apply { topMargin = dp(6) })
 
         appProgress = progressBar()
-        panel.addView(appProgress, matchWidth().apply { topMargin = dp(6) })
+        panel.addView(appProgress, matchWidth().apply { topMargin = dp(10) })
 
         appUpdateManifestInput = themedEditText("URL manifestu aplikacji").apply {
             setText(settings.appUpdateManifestUrl)
         }
-        panel.addView(appUpdateManifestInput, matchWidth().apply { topMargin = dp(10) })
+        panel.addView(updateLabel("Manifest aplikacji"), matchWidth().apply { topMargin = dp(10) })
+        panel.addView(appUpdateManifestInput, matchWidth().apply {
+            topMargin = dp(4)
+            height = dp(42)
+        })
 
-        actionButton(panel, R.drawable.ic_action_save, "Zapisz URL APK") {
-            saveAppUpdateUrl()
-        }
-        actionButton(panel, R.drawable.ic_action_check, "Check app") {
-            saveAppUpdateUrl(showToast = false)
-            appUpdater.checkForUpdates(automatic = false)
-        }
-        actionButton(panel, R.drawable.ic_action_install, "Aktualizuj aplikacje") {
-            saveAppUpdateUrl(showToast = false)
-            appUpdater.installLatest()
-        }
+        addUpdateActions(
+            panel = panel,
+            onSave = { saveAppUpdateUrl() },
+            onCheck = {
+                saveAppUpdateUrl(showToast = false)
+                appUpdater.checkForUpdates(automatic = false)
+            },
+            onInstall = {
+                saveAppUpdateUrl(showToast = false)
+                appUpdater.installLatest()
+            }
+        )
 
         return panel
+    }
+
+    private fun addUpdateActions(
+        panel: LinearLayout,
+        onSave: () -> Unit,
+        onCheck: () -> Unit,
+        onInstall: () -> Unit
+    ) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        row.addView(compactActionButton(R.drawable.ic_action_save, "Zapisz", onSave), LinearLayout.LayoutParams(0, dp(44), 1f))
+        row.addView(compactActionButton(R.drawable.ic_action_check, "Check", onCheck), LinearLayout.LayoutParams(0, dp(44), 1f).apply {
+            leftMargin = dp(8)
+        })
+        row.addView(compactActionButton(R.drawable.ic_action_install, "Update", onInstall), LinearLayout.LayoutParams(0, dp(44), 1f).apply {
+            leftMargin = dp(8)
+        })
+        panel.addView(row, matchWidth().apply { topMargin = dp(10) })
+    }
+
+    private fun updatePanelHeader(iconRes: Int, title: String, badge: String): LinearLayout {
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val icon = ImageView(this).apply {
+            setImageResource(iconRes)
+            setColorFilter(palette.accent)
+            background = rounded(palette.accentSoft, 0)
+            setPadding(dp(9), dp(9), dp(9), dp(9))
+        }
+        header.addView(icon, LinearLayout.LayoutParams(dp(42), dp(42)))
+
+        val titleBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), 0, 0, 0)
+        }
+        titleBox.addView(TextView(this).apply {
+            text = title
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(palette.text)
+            includeFontPadding = false
+        })
+        titleBox.addView(TextView(this).apply {
+            text = badge
+            textSize = 12f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(palette.accent)
+            includeFontPadding = false
+            setPadding(0, dp(5), 0, 0)
+        })
+        header.addView(titleBox, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        return header
+    }
+
+    private fun updateValueText(text: String): TextView {
+        return TextView(this).apply {
+            this.text = text
+            textSize = 13f
+            setTextColor(palette.mutedText)
+            background = rounded(palette.field, palette.border)
+            setPadding(dp(12), dp(9), dp(12), dp(9))
+        }
+    }
+
+    private fun updateLabel(text: String): TextView {
+        return TextView(this).apply {
+            this.text = text
+            textSize = 12f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(palette.faintText)
+            includeFontPadding = false
+        }
+    }
+
+    private fun compactActionButton(iconRes: Int, text: String, onClick: () -> Unit): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(8), 0, dp(8), 0)
+            background = rounded(palette.accent, 0)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                animate().scaleX(0.98f).scaleY(0.98f).setDuration(70L).withEndAction {
+                    animate().scaleX(1f).scaleY(1f).setDuration(110L).start()
+                }.start()
+                onClick()
+            }
+            addView(ImageView(this@MainActivity).apply {
+                setImageResource(iconRes)
+                setColorFilter(Color.WHITE)
+            }, LinearLayout.LayoutParams(dp(18), dp(18)))
+            addView(TextView(this@MainActivity).apply {
+                this.text = text
+                textSize = 12f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.WHITE)
+                includeFontPadding = false
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                leftMargin = dp(6)
+            })
+        }
     }
 
     private fun widgetRow(type: WidgetType): LinearLayout {
@@ -1238,14 +1334,6 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun appendLog(text: String) {
-        logLines.addFirst(text)
-        while (logLines.size > 12) {
-            logLines.removeLast()
-        }
-        logView.text = "Zdarzenia:\n" + logLines.joinToString("\n")
-    }
-
     private fun tabRoot(): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1405,7 +1493,6 @@ class MainActivity : Activity() {
     private enum class AppTab(val label: String, val iconRes: Int) {
         STATUS("Status", R.drawable.ic_tab_status),
         WIDGETS("Widgety", R.drawable.ic_tab_widgets),
-        BLE("BLE", R.drawable.ic_tab_ble),
         SETTINGS("Ustaw.", R.drawable.ic_tab_settings),
         UPDATE("Update", R.drawable.ic_tab_update)
     }

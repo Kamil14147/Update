@@ -1,13 +1,13 @@
 {
   "packageName": "pl.kejmil.oledsender",
   "name": "KESP32",
-  "versionName": "1.6",
-  "versionCode": 7,
-  "apkUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/releases/KESP32-1.6.apk",
-  "changelog": "Stabilize music progress, fix navigation arrow direction, replace Logs with BLE tab, and refresh the minimal UI",
-  "sizeBytes": 1236453,
-  "sha256": "a4626d63d9b26a5dec05e7714aebfa8d76db89ca3ce462b07fdf20c85b7fbad3",
+  "versionName": "1.7",
+  "versionCode": 8,
+  "apkUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/releases/KESP32-1.7.apk",
+  "changelog": "Remove BLE tab and refresh the update screen layout",
+  "sizeBytes": 1098443,
+  "sha256": "ef14ce7d83235f0b739bc5cb188258bba8c257a2cc326c86222b7d179cd0a72e",
   "required": false,
   "protocol": "android-apk-v1",
-  "builtAt": "2026-06-05T12:31:55.287361+00:00"
+  "builtAt": "2026-06-05T12:48:53.973598+00:00"
 }

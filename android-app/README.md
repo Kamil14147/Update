@@ -68,7 +68,6 @@ Dolny pasek:
 
 - `Status`: BLE, aktywny widget, uprawnienia i przyciski serwisowe;
 - `Widgety`: wlaczanie/wylaczanie widgetow i priorytety;
-- `BLE`: status polaczenia, reconnect, odczyt wersji ESP32 i diagnostyka;
 - `Ustaw.`: motyw, autostart, uprawnienia, bateria i tryb debug;
 - `Update`: firmware ESP32 oraz aktualizacja samej aplikacji.
 
@@ -139,9 +138,9 @@ Manifest aplikacji:
 {
   "packageName": "pl.kejmil.oledsender",
   "name": "KESP32",
-  "versionName": "1.6",
-  "versionCode": 7,
-  "apkUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/releases/KESP32-1.6.apk",
+  "versionName": "1.7",
+  "versionCode": 8,
+  "apkUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/android-app/releases/KESP32-1.7.apk",
   "changelog": "Opis zmian",
   "sizeBytes": 1234567,
   "sha256": "64 znaki SHA-256",
@@ -181,8 +180,8 @@ Workflow akceptuje tez stare sekrety `KEPS32V1_*`, jesli juz byly ustawione.
 4. Przy nowej wersji aplikacji zwieksz w `android-app/app/build.gradle`:
 
 ```gradle
-versionCode 7
-versionName "1.6"
+versionCode 8
+versionName "1.7"
 ```
 
 5. Uruchom workflow `Build Android app`. Jesli sekrety podpisu sa ustawione,
@@ -228,10 +227,9 @@ okno aktualizacji z modelem 3D.
 
 - Brak BLE: wlacz Bluetooth i sprawdz, czy ESP32 reklamuje `Kejmil OLED`.
 - Brak nawigacji/powiadomien: wlacz dostep do powiadomien dla aplikacji,
-  potem kliknij `Skanuj media/nav` w `Ustaw.` i sprawdz diagnostyke w `BLE`.
+  potem kliknij `Skanuj media/nav` w `Ustaw.`.
 - Muzyka sie nie pojawia: odtwarzacz musi wystawiac MediaSession lub
-  powiadomienie transportowe. Kliknij `Skanuj media/nav`; w `BLE` powinno
-  pojawic sie `mark=media` przy aktywnym odtwarzaczu.
+  powiadomienie transportowe.
 - Numer telefonu niedostepny: Android lub operator moze go blokowac mimo zgody.
 - Pogoda brak: telefon nie ma ostatniej znanej lokalizacji albo lokalizacja jest
   zablokowana.
