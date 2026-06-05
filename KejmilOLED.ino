@@ -26,7 +26,7 @@ static const bool BUTTON_ENABLED = true;
 
 static const char *DEVICE_ID = "kejmil-oled-esp32";
 static const char *BLE_DEVICE_NAME = "Kejmil OLED";
-static const char *FW_VERSION = "1.0.3";
+static const char *FW_VERSION = "1.0.4";
 static const char *UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 static const char *UART_RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 static const char *UART_TX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
@@ -463,10 +463,18 @@ void processJsonLine(const String &line) {
   uint16_t timeoutMs = doc.containsKey("timeout") ? constrain(doc["timeout"].as<int>(), 0, 30000) : 0;
 
   if (type == "music") {
-    musicTitle = field(doc, "title", "Brak tytulu");
-    musicArtist = field(doc, "artist", "Nieznany artysta");
+    String nextTitle = field(doc, "title", "Brak tytulu");
+    String nextArtist = field(doc, "artist", "Nieznany artysta");
+    bool sameTrack = nextTitle == musicTitle && nextArtist == musicArtist;
+    int incomingProgress = doc.containsKey("progress") ? doc["progress"].as<int>() : -1;
+    musicTitle = nextTitle;
+    musicArtist = nextArtist;
     musicState = field(doc, "state", "paused");
-    musicProgress = doc.containsKey("progress") ? constrain(doc["progress"].as<int>(), 0, 100) : -1;
+    if (incomingProgress >= 0) {
+      musicProgress = constrain(incomingProgress, 0, 100);
+    } else if (!sameTrack) {
+      musicProgress = -1;
+    }
     setScreen(SCREEN_MUSIC, timeoutMs);
   } else if (type == "nav") {
     navInstruction = field(doc, "instruction", "Nawigacja");
@@ -1036,9 +1044,7 @@ void drawMusic() {
   display.setCursor(4, 39);
   display.print(musicState == "playing" ? "GRA" : "PAUZA");
 
-  if (musicProgress >= 0) {
-    drawProgressBar(40, 39, 83, 7, musicProgress);
-  }
+  drawProgressBar(40, 39, 83, 7, musicProgress >= 0 ? musicProgress : 0);
 }
 
 void drawNavigation() {
@@ -1287,10 +1293,21 @@ String inferDirectionFromText(const String &text) {
   String lower = normalizeText(text);
   lower.toLowerCase();
 
-  if (lower.indexOf("prawo") >= 0 || lower.indexOf("right") >= 0) {
+  if (lower.indexOf("zawroc") >= 0 || lower.indexOf("uturn") >= 0 || lower.indexOf("u-turn") >= 0) {
+    return "uturn";
+  }
+  if ((lower.indexOf("skrec") >= 0 || lower.indexOf("jedz") >= 0 || lower.indexOf("zjedz") >= 0 || lower.indexOf("turn") >= 0 || lower.indexOf("keep") >= 0 || lower.indexOf("bear") >= 0 || lower.indexOf("exit") >= 0) &&
+      (lower.indexOf("prawo") >= 0 || lower.indexOf("right") >= 0)) {
     return "right";
   }
-  if (lower.indexOf("lewo") >= 0 || lower.indexOf("left") >= 0) {
+  if ((lower.indexOf("skrec") >= 0 || lower.indexOf("jedz") >= 0 || lower.indexOf("zjedz") >= 0 || lower.indexOf("turn") >= 0 || lower.indexOf("keep") >= 0 || lower.indexOf("bear") >= 0 || lower.indexOf("exit") >= 0) &&
+      (lower.indexOf("lewo") >= 0 || lower.indexOf("left") >= 0)) {
+    return "left";
+  }
+  if (lower.indexOf("w prawo") >= 0 || lower.indexOf("na prawo") >= 0 || lower.indexOf(" right") >= 0 || lower.startsWith("right")) {
+    return "right";
+  }
+  if (lower.indexOf("w lewo") >= 0 || lower.indexOf("na lewo") >= 0 || lower.indexOf(" left") >= 0 || lower.startsWith("left")) {
     return "left";
   }
   if (lower.indexOf("prosto") >= 0 || lower.indexOf("straight") >= 0 || lower.indexOf("continue") >= 0) {
@@ -1298,9 +1315,6 @@ String inferDirectionFromText(const String &text) {
   }
   if (lower.indexOf("rondo") >= 0 || lower.indexOf("roundabout") >= 0) {
     return "roundabout";
-  }
-  if (lower.indexOf("zawroc") >= 0 || lower.indexOf("uturn") >= 0 || lower.indexOf("u-turn") >= 0) {
-    return "uturn";
   }
   return "right";
 }

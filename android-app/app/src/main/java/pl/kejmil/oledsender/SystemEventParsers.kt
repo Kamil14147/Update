@@ -122,7 +122,11 @@ object SystemEventParsers {
         val instruction = chooseNavigationInstruction(title, body, combined)
         val distance = distanceRegex.find(combined)?.value ?: ""
         val street = streetRegex.find(combined)?.value ?: ""
-        val direction = detectDirection(combined)
+        val direction = firstMeaningful(
+            detectDirection(instruction),
+            detectDirection(title),
+            detectDirection(body)
+        )
 
         val payload = JSONObject()
             .put("instruction", limit(instruction, 64))
@@ -183,7 +187,7 @@ object SystemEventParsers {
         return WidgetEvent(
             type = WidgetType.MUSIC,
             sourceKey = "media_notification:${sbn.packageName}",
-            priority = WidgetType.MUSIC.defaultPriority,
+            priority = WidgetType.MUSIC.defaultPriority - 8,
             payload = payload,
             timeoutMs = 20000L
         )
@@ -286,13 +290,20 @@ object SystemEventParsers {
     private fun detectDirection(text: String): String {
         val lower = fold(text)
         return when {
-            listOf("prawo", "right").any { lower.contains(it) } -> "right"
-            listOf("lewo", "left").any { lower.contains(it) } -> "left"
-            listOf("prosto", "straight", "continue").any { lower.contains(it) } -> "straight"
-            listOf("rondo", "roundabout").any { lower.contains(it) } -> "roundabout"
             listOf("zawroc", "u-turn", "uturn").any { lower.contains(it) } -> "uturn"
+            hasTurnPhrase(lower, "prawo", "right") -> "right"
+            hasTurnPhrase(lower, "lewo", "left") -> "left"
+            listOf("prosto", "straight", "continue", "kontynuuj").any { lower.contains(it) } -> "straight"
+            listOf("rondo", "roundabout", "zjazd").any { lower.contains(it) } -> "roundabout"
             else -> ""
         }
+    }
+
+    private fun hasTurnPhrase(text: String, polish: String, english: String): Boolean {
+        val verbs = "(skrec|jedz|zjedz|trzymaj|kieruj|wybierz|turn|keep|bear|take|exit)"
+        return Regex("""\b$verbs\b.{0,28}\b($polish|$english)\b""").containsMatchIn(text) ||
+            Regex("""\b(w|na)\s+$polish\b""").containsMatchIn(text) ||
+            Regex("""\b$english\b""").containsMatchIn(text)
     }
 
     private fun extrasText(notification: Notification, key: String): String {

@@ -45,6 +45,7 @@ class MainActivity : Activity() {
     private lateinit var bottomNav: LinearLayout
     private lateinit var permissionView: TextView
     private lateinit var bleStatusView: TextView
+    private lateinit var bleDetailStatusView: TextView
     private lateinit var activeWidgetView: TextView
     private lateinit var lastJsonView: TextView
     private lateinit var logView: TextView
@@ -73,6 +74,7 @@ class MainActivity : Activity() {
     private val logLines = ArrayDeque<String>()
 
     private var currentTab = AppTab.STATUS
+    private var currentBleStatusText = "czekam"
     private var firmwareStatusText = "czekam"
     private var firmwareUpdateAvailable: Boolean? = null
     private var firmwareRequired: Boolean? = null
@@ -108,7 +110,13 @@ class MainActivity : Activity() {
         runOnUiThread {
             when (message) {
                 is AppBus.Message.Status -> {
-                    message.bleStatus?.let { bleStatusView.text = "BLE: $it" }
+                    message.bleStatus?.let {
+                        currentBleStatusText = it
+                        bleStatusView.text = "BLE: $it"
+                        if (::bleDetailStatusView.isInitialized) {
+                            bleDetailStatusView.text = "Status: $it"
+                        }
+                    }
                     message.activeWidget?.let { activeWidgetView.text = "Aktywny widget: $it" }
                     message.lastJson?.let {
                         lastJsonView.text = "Ostatni JSON:\n$it"
@@ -222,9 +230,9 @@ class MainActivity : Activity() {
 
         addTabView(AppTab.STATUS, statusTab())
         addTabView(AppTab.WIDGETS, widgetsTab())
+        addTabView(AppTab.BLE, bleTab())
         addTabView(AppTab.SETTINGS, settingsTab())
         addTabView(AppTab.UPDATE, updateTab())
-        addTabView(AppTab.LOGS, logsTab())
         showTab(AppTab.STATUS, animate = false)
     }
 
@@ -406,10 +414,6 @@ class MainActivity : Activity() {
         actionButton(actionPanel, R.drawable.ic_action_reconnect, "Polacz ponownie") {
             AppBus.publish(AppBus.Message.Reconnect)
         }
-        actionButton(actionPanel, R.drawable.ic_action_check, "Skanuj media/nav") {
-            KejmilForegroundService.scanNotificationSources(this)
-            updatePermissionStatus()
-        }
         actionButton(actionPanel, R.drawable.ic_action_service, "Wylacz usluge") {
             KejmilForegroundService.stop(this)
         }
@@ -445,6 +449,40 @@ class MainActivity : Activity() {
             savePriorities()
         }
         root.addView(widgetPanel, spaced())
+        return root
+    }
+
+    private fun bleTab(): LinearLayout {
+        val root = tabRoot()
+
+        val blePanel = panel()
+        blePanel.addView(sectionTitle("BLE"))
+        bleDetailStatusView = sectionText("Status: $currentBleStatusText")
+        blePanel.addView(bleDetailStatusView, matchWidth())
+        actionButton(blePanel, R.drawable.ic_action_service, "Uruchom usluge") {
+            if (!hasRuntimePermissions()) requestRuntimePermissions() else KejmilForegroundService.start(this)
+        }
+        actionButton(blePanel, R.drawable.ic_action_reconnect, "Polacz ponownie") {
+            AppBus.publish(AppBus.Message.Reconnect)
+        }
+        actionButton(blePanel, R.drawable.ic_action_check, "Odczytaj wersje ESP32") {
+            AppBus.publish(AppBus.Message.RequestFirmwareVersion)
+        }
+        actionButton(blePanel, R.drawable.ic_action_service, "Wylacz usluge") {
+            KejmilForegroundService.stop(this)
+        }
+        root.addView(blePanel, matchWidth())
+
+        val diagnosticPanel = panel()
+        diagnosticPanel.addView(sectionTitle("Diagnostyka"))
+        lastJsonView = sectionText("Ostatni JSON: brak").apply {
+            setTextIsSelectable(true)
+        }
+        diagnosticPanel.addView(lastJsonView, matchWidth())
+        logView = sectionText("Zdarzenia: brak")
+        diagnosticPanel.addView(logView, matchWidth())
+        root.addView(diagnosticPanel, spaced())
+
         return root
     }
 
@@ -582,20 +620,6 @@ class MainActivity : Activity() {
         }
 
         return panel
-    }
-
-    private fun logsTab(): LinearLayout {
-        val root = tabRoot()
-        val logPanel = panel()
-        logPanel.addView(sectionTitle("Logi"))
-        lastJsonView = sectionText("Ostatni JSON: brak").apply {
-            setTextIsSelectable(true)
-        }
-        logPanel.addView(lastJsonView, matchWidth())
-        logView = sectionText("Zdarzenia: brak")
-        logPanel.addView(logView, matchWidth())
-        root.addView(logPanel, matchWidth())
-        return root
     }
 
     private fun widgetRow(type: WidgetType): LinearLayout {
@@ -1381,9 +1405,9 @@ class MainActivity : Activity() {
     private enum class AppTab(val label: String, val iconRes: Int) {
         STATUS("Status", R.drawable.ic_tab_status),
         WIDGETS("Widgety", R.drawable.ic_tab_widgets),
+        BLE("BLE", R.drawable.ic_tab_ble),
         SETTINGS("Ustaw.", R.drawable.ic_tab_settings),
-        UPDATE("Update", R.drawable.ic_tab_update),
-        LOGS("Logi", R.drawable.ic_tab_logs)
+        UPDATE("Update", R.drawable.ic_tab_update)
     }
 
     private enum class UpdateKind {

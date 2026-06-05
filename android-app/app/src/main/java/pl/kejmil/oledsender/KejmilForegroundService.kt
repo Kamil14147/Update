@@ -51,6 +51,9 @@ class KejmilForegroundService : Service() {
     private var mediaSessionManager: MediaSessionManager? = null
     private val mediaRegistrations = mutableListOf<ControllerRegistration>()
     private var mediaListener: MediaSessionManager.OnActiveSessionsChangedListener? = null
+    private var lastMediaTitle = ""
+    private var lastMediaArtist = ""
+    private var lastMediaProgress = -1
     private var lastMediaRefresh = 0L
     private var lastNotificationSnapshotAt = 0L
 
@@ -468,6 +471,9 @@ class KejmilForegroundService : Service() {
             PlaybackState.STATE_STOPPED,
             PlaybackState.STATE_NONE -> {
                 AppBus.publish(AppBus.Message.ClearSource("media"))
+                lastMediaTitle = ""
+                lastMediaArtist = ""
+                lastMediaProgress = -1
                 return
             }
             else -> "paused"
@@ -475,10 +481,18 @@ class KejmilForegroundService : Service() {
 
         val duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
         val position = playbackState?.position ?: 0L
+        val sameTrack = title == lastMediaTitle && artist == lastMediaArtist
         val progress = if (duration > 0L) {
             ((position.toDouble() / duration.toDouble()) * 100.0).roundToInt().coerceIn(0, 100)
+        } else if (sameTrack) {
+            lastMediaProgress
         } else {
             -1
+        }
+        lastMediaTitle = title
+        lastMediaArtist = artist
+        if (progress >= 0) {
+            lastMediaProgress = progress
         }
 
         val payload = JSONObject()

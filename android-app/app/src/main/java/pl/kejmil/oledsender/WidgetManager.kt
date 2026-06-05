@@ -30,7 +30,9 @@ class WidgetManager(
             return
         }
 
-        val fixedEvent = event.copy(priority = settings.priority(event.type))
+        val sourcePriorityOffset = event.priority - event.type.defaultPriority
+        val fixedPriority = (settings.priority(event.type) + sourcePriorityOffset).coerceIn(1, 100)
+        val fixedEvent = event.copy(priority = fixedPriority)
         if (fixedEvent.type == WidgetType.BATTERY) {
             phoneBattery = fixedEvent.payload.optInt("percent", phoneBattery)
             phoneCharging = fixedEvent.payload.optBoolean("charging", phoneCharging)
@@ -68,7 +70,11 @@ class WidgetManager(
 
         val candidate = activeEvents.values
             .filter { settings.isWidgetEnabled(it.type) }
-            .maxWithOrNull(compareBy<WidgetEvent> { it.priority }.thenBy { it.createdAt })
+            .maxWithOrNull(
+                compareBy<WidgetEvent> { it.priority }
+                    .thenBy { sourceRank(it) }
+                    .thenBy { it.createdAt }
+            )
             ?: buildHomeEvent()
 
         val previous = current
@@ -115,6 +121,10 @@ class WidgetManager(
             priority = settings.priority(WidgetType.HOME),
             payload = payload
         )
+    }
+
+    private fun sourceRank(event: WidgetEvent): Int {
+        return if (event.type == WidgetType.MUSIC && event.sourceKey == "media") 1 else 0
     }
 
     companion object {

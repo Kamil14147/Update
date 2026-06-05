@@ -125,7 +125,7 @@ class OledPreviewView(context: Context) : View(context) {
         text(canvas, fit(data.optString("artist", "Nieznany artysta"), 17), 24f, 30f, 7f)
         text(canvas, if (data.optString("state") == "playing") "GRA" else "PAUZA", 4f, 45f, 7f)
         val progress = data.optInt("progress", -1)
-        if (progress >= 0) progress(canvas, 40f, 39f, 83f, 7f, progress)
+        progress(canvas, 40f, 39f, 83f, 7f, progress.coerceAtLeast(0))
     }
 
     private fun drawNavigation(canvas: Canvas, data: JSONObject) {
@@ -271,6 +271,26 @@ class OledPreviewView(context: Context) : View(context) {
                     moveTo(x + 12f, y - 12f)
                     lineTo(x + 4f, y - 3f)
                     lineTo(x + 20f, y - 3f)
+                    close()
+                }, paint)
+            }
+            "roundabout" -> {
+                canvas.drawCircle(x + 12f, y, 9f, paint)
+                paint.style = Paint.Style.FILL
+                canvas.drawPath(android.graphics.Path().apply {
+                    moveTo(x + 18f, y - 8f)
+                    lineTo(x + 24f, y - 5f)
+                    lineTo(x + 18f, y - 2f)
+                    close()
+                }, paint)
+            }
+            "uturn" -> {
+                canvas.drawRoundRect(RectF(x + 5f, y - 10f, x + 23f, y + 8f), 7f, 7f, paint)
+                paint.style = Paint.Style.FILL
+                canvas.drawPath(android.graphics.Path().apply {
+                    moveTo(x + 5f, y + 8f)
+                    lineTo(x + 12f, y + 2f)
+                    lineTo(x + 12f, y + 14f)
                     close()
                 }, paint)
             }

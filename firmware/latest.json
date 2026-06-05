@@ -1,12 +1,12 @@
 {
   "device": "kejmil-oled-esp32",
   "name": "Kejmil OLED",
-  "version": "1.0.3",
-  "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.3.bin",
-  "changelog": "Add more widget screens and timeout-based return to the home clock",
-  "sizeBytes": 1181376,
-  "sha256": "55f0b765c1636183e2c863bb82bb3b26c21b2854c87ed27b35d5571853cd88a7",
+  "version": "1.0.4",
+  "firmwareUrl": "https://raw.githubusercontent.com/Kamil14147/Update/main/firmware/releases/kejmil-oled-esp32-1.0.4.bin",
+  "changelog": "Keep music progress bar stable and improve navigation arrow fallback on OLED",
+  "sizeBytes": 1183984,
+  "sha256": "cd0f9a323f58a46a23194868223d16d88a7ae071ce603b07c0dda070e2b01c01",
   "required": false,
   "protocol": "ble-ota-v1",
-  "builtAt": "2026-06-04T22:49:42.726683+00:00"
+  "builtAt": "2026-06-05T12:30:42.388171+00:00"
 }
